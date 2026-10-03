@@ -6,14 +6,27 @@ import json
 import os
 from pathlib import Path
 import secrets
+import sqlite3
 from socketserver import TCPServer
 import threading
 import time
 import uuid
 
+from . import __version__
 from .delivery import flush, retry_blocked, status, verify
 from .install import copy_app, install_hooks, install_plugin_hooks
-from .state import atomic_json, config, gateway_url, save_config, set_enabled, state_dir
+from .state import atomic_json, config, gateway_url, safe_health, save_config, set_enabled, state_dir
+
+
+def deliver(stopping: threading.Event) -> None:
+    while not stopping.wait(1):
+        safe_health("helper_heartbeat", str(time.time()))
+        try:
+            flush()
+        except Exception:
+            safe_health("helper_error", "Delivery is temporarily unavailable. Your turns are saved locally and will retry automatically.")
+        else:
+            safe_health("helper_error", "")
 
 
 class LoopbackHTTPServer(ThreadingHTTPServer):
@@ -86,7 +99,10 @@ def serve(port: int = 18734) -> None:
             elif self.path == "/":
                 self.reply(200, page.replace("__CSRF__", token), "text/html")
             elif self.path == "/status":
-                self.reply(200, json.dumps(status()))
+                try:
+                    self.reply(200, json.dumps(status()))
+                except (OSError, sqlite3.Error):
+                    self.reply(503, json.dumps({"error": "The local queue is busy. Status will refresh automatically."}))
             else:
                 self.reply(404, "{}")
 
@@ -114,25 +130,17 @@ def serve(port: int = 18734) -> None:
                     self.reply(404, "{}")
                     return
                 self.reply(200, json.dumps(status()))
-            except (ValueError, OSError, KeyError) as exc:
+            except (ValueError, OSError, KeyError, sqlite3.Error) as exc:
                 # Only expected local validation errors reach here; delivery never includes remote bodies.
                 self.reply(400, json.dumps({"error": str(exc) if isinstance(exc, ValueError) else
                                            "Could not save setup. Check local file permissions."}))
 
     server = LoopbackHTTPServer(("127.0.0.1", port), Handler)
     server.daemon_threads = True
-    atomic_json(state_dir() / "service.json", {"port": server.server_port, "pid": os.getpid()})
+    atomic_json(state_dir() / "service.json", {"port": server.server_port, "pid": os.getpid(), "version": __version__})
     stopping = threading.Event()
 
-    def deliver():
-        while not stopping.wait(1):
-            try:
-                flush()
-            except Exception:
-                from .state import health
-                health("helper_error", "The helper encountered an error. Restart it and check status before continuing.")
-
-    worker = threading.Thread(target=deliver, daemon=True)
+    worker = threading.Thread(target=deliver, args=(stopping,), daemon=True)
     worker.start()
     try:
         server.serve_forever()

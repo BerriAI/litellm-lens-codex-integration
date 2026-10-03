@@ -4,6 +4,9 @@ from __future__ import annotations
 import hashlib
 import json
 
+from . import __version__
+from .content import encode, event_content, excerpt
+
 
 def stable_id(*parts: str, size: int = 16) -> str:
     return hashlib.sha256("\x00".join(parts).encode()).hexdigest()[:size * 2]
@@ -41,7 +44,7 @@ def build_trace(turn: dict, rows: list[dict], settings: dict, usage: dict | None
     session_id, turn_id = turn["session"], turn["turn"]
     trace_id = stable_id("codex-session", settings["installation_id"], session_id)
     root_id = stable_id("codex-turn", session_id, turn_id, size=8)
-    events = [(row["received"], json.loads(row["data"])) for row in rows]
+    events = [(row["received"], event_content(json.loads(row["data"]))) for row in rows]
     prompts = [d.get("prompt", "") for _, d in events if d["hook_event_name"] == "UserPromptSubmit"]
     stop = next((d for _, d in reversed(events) if d["hook_event_name"] == "Stop"), {})
     interrupted = any(d["hook_event_name"] == "Interrupt" for _, d in events) or not stop
@@ -52,7 +55,9 @@ def build_trace(turn: dict, rows: list[dict], settings: dict, usage: dict | None
         "codex.turn.id": turn_id, "codex.capture.source": "lifecycle_hooks",
         "codex.capture.scope": "user prompts, final replies, local tool calls",
         "codex.usage.known": usage is not None,
-        "gen_ai.input.messages": json.dumps([{ "role": "user", "content": prompt} for prompt in prompts], ensure_ascii=False),
+        "gen_ai.input.messages": messages("user", excerpt("\n\n".join(
+            p if isinstance(p, str) else encode(p) for p in prompts))) if len(encode(prompts).encode()) > 128 * 1024
+            else json.dumps([{ "role": "user", "content": prompt} for prompt in prompts], ensure_ascii=False),
         "gen_ai.output.messages": messages("assistant", stop.get("last_assistant_message", "")),
     }
     model = next((d["model"] for _, d in events if d.get("model")), None)
@@ -64,6 +69,9 @@ def build_trace(turn: dict, rows: list[dict], settings: dict, usage: dict | None
                        "gen_ai.usage.cache_read.input_tokens": usage["cached_input_tokens"],
                        "codex.usage.reasoning_output_tokens": usage["reasoning_output_tokens"],
                        "codex.usage.source": "codex_transcript_turn_totals"})
+    notes = {key: sum(d.get("capture_notes", {}).get(key, 0) for _, d in events)
+             for key in {key for _, d in events for key in d.get("capture_notes", {})}}
+    values.update({"codex.capture." + key: value for key, value in notes.items()})
     result = [span(trace_id, root_id, name, turn["started"], turn["ended"], values,
                    error="Turn interrupted before a final reply." if interrupted else None)]
     calls: dict[str, dict] = {}
@@ -89,5 +97,5 @@ def build_trace(turn: dict, rows: list[dict], settings: dict, usage: dict | None
                            call["name"], call["start"], call.get("end", turn["ended"]), tool_values, root_id,
                            None if call.get("finished") else "Tool did not complete before the turn ended."))
     return {"resourceSpans": [{"resource": {"attributes": attrs({"service.name": name,
-             "telemetry.sdk.name": "litellm-lens-codex", "telemetry.sdk.version": "0.1.0"})},
-             "scopeSpans": [{"scope": {"name": "berriai.lens.codex", "version": "0.1.0"}, "spans": result}]}]}
+             "telemetry.sdk.name": "litellm-lens-codex", "telemetry.sdk.version": __version__})},
+             "scopeSpans": [{"scope": {"name": "berriai.lens.codex", "version": __version__}, "spans": result}]}]}

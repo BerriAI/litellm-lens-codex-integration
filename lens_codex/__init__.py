@@ -1,2 +1,2 @@
-"""BerriAI's Codex → Lens integration. Private preview."""
-__version__ = "0.1.0"
+"""BerriAI's Codex → Lens integration. Public preview."""
+__version__ = "0.2.4"

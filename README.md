@@ -71,6 +71,8 @@ A trace contains the user prompts, final replies, and local tool calls for one c
 
 **Coverage matters:** this preview captures Codex's lifecycle hooks, not its complete internal model traffic. It includes shell, file-editing, and local/MCP tools that emit those hooks. Hosted web-search internals, hidden reasoning, images/binary attachments, and individual model-request prompts are not exported. Nested subagent reconstruction is not supported yet. Don't use this preview to measure complete model-call coverage.
 
+Large tool outputs are shortened with a visible marker. Images, internal transport metadata, and duplicate MCP results are removed. Completed turns upload in small, recoverable batches; a busy local database does not block your Codex chat.
+
 When available, token totals come from the current turn's local Codex transcript. They are attached to the turn; the integration does **not** invent individual LLM spans, model-call durations, or a dollar cost. A missing token count is reported in the setup window. Codex's transcript format is not a stable API, so compatibility tests are required when it changes.
 
 ## Pause or remove

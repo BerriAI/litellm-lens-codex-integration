@@ -73,3 +73,11 @@ PYTHONPATH=. python3 scripts/live_appserver.py /tmp/lens-qa
 ```
 
 The private output directory contains an auth-file copy and test payloads. Treat it as sensitive and remove it when finished. Never commit it.
+
+## 0.2.4 delivery regression checks
+
+The suite now covers 114 cases. New cases reproduce media-heavy MCP results, duplicated JSON, Unicode and JSON-escaping size limits, queued capture during a held SQLite write lock, concurrent sessions, import replay after a crash, and recovery when error reporting itself fails. A local HTTP server enforces the upload byte limit, disconnects after accepting a batch, and rate-limits the next batch. The test verifies that resumed delivery sends every span once and keeps subsequent turns in the same trace.
+
+Fresh native-plugin acceptance runs against the development gateway passed on Codex CLI 0.160.0 and the desktop's 0.159.0-alpha.12.1 engine: two turns including a resumed session, a tool output over 6,000 characters, the configured agent name, real token totals, and no duplicate spans after another flush. These tests use isolated profiles and synthetic prompts. They do not establish complete coverage of the desktop UI or every third-party framework.
+
+The desktop app-server test also passed with three turns including cancellation. The cancelled turn was marked as interrupted in Lens.

@@ -1,7 +1,7 @@
 # How it works
 
 ```
-Codex lifecycle hooks → private SQLite queue → HTTPS OTLP/JSON → LiteLLM → Lens
+Codex hooks → private event files → SQLite batches → HTTPS OTLP/JSON → Lens
                                 ↑
                    current-turn token totals
 ```
@@ -18,7 +18,7 @@ A whole session is one Lens run. Investigating a session with many turns therefo
 
 ## Sources and compatibility
 
-The primary input is Codex's [documented lifecycle hooks](https://learn.chatgpt.com/docs/hooks): SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, Interrupt, and SessionEnd. Tool output is the output exposed to Codex, not necessarily an unlimited raw process stream. We add no small per-output truncation; an event over 16 MB is rejected with a visible capture error.
+The primary input is Codex's [documented lifecycle hooks](https://learn.chatgpt.com/docs/hooks): SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, Interrupt, and SessionEnd. Tool output is the output exposed to Codex. Media, internal MCP metadata, and duplicate structured/text results are removed before storage. Content fields are bounded to 128 KiB of UTF-8 text with a visible beginning/end excerpt marker. An incoming hook over 16 MB is rejected with a capture error.
 
 A narrow transcript reader uses only the hook-supplied path under the configured Codex home. It looks for exact turn IDs, completed-turn markers and token counts. A bounded lookbehind finds the turn identity written just before the prompt hook. It never exports raw transcripts, rate-limit/account fields, system instructions, or reasoning text. Unknown or missing usage remains unknown.
 
@@ -28,14 +28,18 @@ Known coverage limits are in the README. In particular, raw LLM request/response
 
 ## Delivery semantics
 
-Events are committed to SQLite before the hook returns. Completed turns are assembled once; the exact serialized batch is retained until delivery is confirmed. The helper marks a batch uncertain *before* issuing the network request, so a crash after acceptance cannot trigger a blind replay.
+Events are saved atomically to private files before the hook returns. One importer commits them to SQLite; if SQLite is busy, the files remain for the next pass. Completed turns are assembled into requests of at most 512 KiB, including JSON escaping and envelopes. The exact serialized batches and their individual acknowledgements are retained until delivery is confirmed. The helper marks a batch uncertain *before* issuing the network request, so a crash after acceptance cannot trigger a blind replay.
 
-- HTTP success: remove the queued prompt/tool data, retain a seven-day delivery receipt.
+- HTTP success: acknowledge that batch. After all batches for a turn succeed, remove its queued prompt/tool data and retain a seven-day delivery receipt.
 - Authentication/validation rejection: hold the turn and show an actionable error; reconnecting retries it.
 - Rate limit: retry the same batch with bounded exponential backoff.
 - Lost acknowledgement, server error, partial success, or crash: read the trace back and verify every span ID. Only confirmed delivery clears the batch. Never blindly resend an uncertain batch.
 
 This favors avoiding duplicate traces over automatic recovery when the server's acceptance is unknowable. Pending content is bounded at 256 MB; reaching that limit stops capture with a visible error, rather than deleting older unsent content. The helper does not promise exactly-once delivery across an arbitrary OTLP backend.
+
+Health reporting uses separate atomic files, so reporting a database error never needs another database write. The sender catches failures and continues; status detects a stale heartbeat. A rejected oversized request from 0.2.3 is rebuilt from its saved events with the new content and batching rules. Previously uncertain requests are reconciled unchanged.
+
+See the [SDK comparison and design decision](export-design.md).
 
 ## Local setup server
 

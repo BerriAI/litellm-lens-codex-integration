@@ -13,6 +13,8 @@ import tempfile
 import time
 from urllib.parse import urlsplit
 
+from .content import event_content
+
 MAX_EVENT_BYTES = 16 * 1024 * 1024
 MAX_QUEUE_BYTES = 256 * 1024 * 1024
 EVENTS = {"SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop", "Interrupt", "SessionEnd"}
@@ -40,6 +42,16 @@ def atomic_json(path: Path, value: object) -> None:
             os.unlink(temporary)
 
 
+def inbox_bytes(inbox: Path) -> int:
+    total = 0
+    for path in inbox.glob("*.json"):
+        try:
+            total += path.stat().st_size
+        except FileNotFoundError:
+            pass  # The importer already committed and removed this event.
+    return total
+
+
 def config() -> dict:
     try:
         return json.loads((state_dir() / "config.json").read_text())
@@ -65,9 +77,9 @@ def gateway_url(value: str) -> str:
 
 
 @contextlib.contextmanager
-def database():
+def database(*, write: bool = True, timeout: float = 2):
     path = state_dir() / "events.sqlite3"
-    db = sqlite3.connect(path, timeout=2)
+    db = sqlite3.connect(path, timeout=timeout)
     path.chmod(0o600)
     db.row_factory = sqlite3.Row
     try:
@@ -93,7 +105,16 @@ def database():
             CREATE TABLE IF NOT EXISTS health (key TEXT PRIMARY KEY, value TEXT);
             PRAGMA user_version=1;
                 """)
-        db.execute("BEGIN IMMEDIATE")
+            if db.execute("PRAGMA user_version").fetchone()[0] < 2:
+                db.executescript("""
+                    CREATE TABLE IF NOT EXISTS batches (
+                        session TEXT NOT NULL, turn TEXT NOT NULL, position INTEGER NOT NULL,
+                        payload TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
+                        PRIMARY KEY(session, turn, position)
+                    );
+                    PRAGMA user_version=2;
+                """)
+        db.execute("BEGIN IMMEDIATE" if write else "BEGIN")
         yield db
         db.commit()
     except BaseException:
@@ -104,8 +125,28 @@ def database():
 
 
 def health(key: str, value: str) -> None:
-    with database() as db:
-        db.execute("INSERT OR REPLACE INTO health VALUES (?, ?)", (key, value))
+    # Reporting a database error must not need a database write itself.
+    if not re.fullmatch(r"[a-z_]+", key):
+        raise ValueError("Invalid health field")
+    atomic_json(state_dir() / "health" / (key + ".json"), value)
+
+
+def health_notes() -> dict:
+    result = {}
+    for path in (state_dir() / "health").glob("*.json"):
+        try:
+            result[path.stem] = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+    return result
+
+
+def safe_health(key: str, value: str) -> None:
+    try:
+        health(key, value)
+    except Exception:
+        # Disk/permission failures must not kill the delivery thread or a Codex hook.
+        pass
 
 
 def transcript_path(event: dict, settings: dict) -> Path | None:
@@ -129,15 +170,20 @@ def redact(value: object, secret: str) -> object:
 
 
 def set_enabled(enabled: bool) -> None:
-    settings = config()
-    settings["enabled"] = enabled
-    save_config(settings)
-    if not enabled:
-        with database() as db:
-            db.execute("DELETE FROM events WHERE EXISTS (SELECT 1 FROM turns WHERE turns.session=events.session "
-                       "AND turns.turn=events.turn AND turns.status='recording')")
-            db.execute("UPDATE turns SET status='discarded',warning=? WHERE status='recording'",
-                       ("Recording paused before this turn finished; incomplete content discarded.",))
+    with (state_dir() / "capture.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        settings = config()
+        settings["enabled"] = enabled
+        save_config(settings)
+        if enabled:
+            return
+        # Queue the pause in event order. Even when SQLite is locked, pre-pause
+        # incomplete turns cannot be resurrected after the user resumes.
+        inbox = state_dir() / "inbox"
+        inbox.mkdir(exist_ok=True, mode=0o700)
+        atomic_json(inbox / f"{time.time_ns():020d}-{os.getpid()}.json",
+                    {"data": {"hook_event_name": "Pause"}, "received": time.time()})
+        drain_inbox(blocking=True)
 
 
 def capture(event: dict, now: float | None = None) -> bool:
@@ -159,22 +205,53 @@ def capture(event: dict, now: float | None = None) -> bool:
     fields = {"hook_event_name", "session_id", "turn_id", "model", "prompt", "tool_name", "tool_input",
               "tool_response", "tool_use_id", "last_assistant_message", "reason"}
     data = {key: value for key, value in event.items() if key in fields}
-    data = redact(data, settings.get("api_key", ""))
+    data = event_content(redact(data, settings.get("api_key", "")))
     encoded = json.dumps(data, ensure_ascii=False, sort_keys=True)
     if len(encoded.encode()) > MAX_EVENT_BYTES:
         raise ValueError("A hook exceeded the 16 MB safety limit. Its content was not truncated or exported.")
+    if kind == "UserPromptSubmit" and not turn:
+        raise ValueError("This Codex hook is missing its turn ID. Update Codex before recording.")
+    path = transcript_path(event, settings) if kind == "UserPromptSubmit" else None
+    offset = path.stat().st_size if path and path.exists() else 0
+    inbox = state_dir() / "inbox"
+    inbox.mkdir(exist_ok=True, mode=0o700)
+    with (state_dir() / "capture.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if not config().get("enabled"):
+            return False
+        with database(write=False) as db:
+            queued = db.execute("SELECT COALESCE(SUM(LENGTH(CAST(data AS BLOB))),0) FROM events").fetchone()[0]
+        queued += inbox_bytes(inbox)
+        if queued + len(encoded.encode()) > MAX_QUEUE_BYTES:
+            raise ValueError("Local capture queue is full. Open Lens Codex to resolve the delivery problem.")
+        filename = f"{time.time_ns():020d}-{os.getpid()}.json"
+        atomic_json(inbox / filename, {"data": data, "received": now, "path": str(path) if path else None,
+                                      "offset": offset})
+    # The durable file exists before touching SQLite. Busy databases cannot lose
+    # an event, and only one importer writes captures at a time.
+    results = drain_inbox(limit=1)
+    return results.get(filename, True)
+
+
+def store_event(item: dict) -> bool:
+    data, now = item["data"], item["received"]
+    if data["hook_event_name"] == "Pause":
+        with database(timeout=0.05) as db:
+            db.execute("DELETE FROM events WHERE EXISTS (SELECT 1 FROM turns WHERE turns.session=events.session "
+                       "AND turns.turn=events.turn AND turns.status='recording')")
+            db.execute("UPDATE turns SET status='discarded',warning=? WHERE status='recording'",
+                       ("Recording paused before this turn finished; incomplete content discarded.",))
+        return True
+    kind, session, turn = data["hook_event_name"], data["session_id"], data.get("turn_id", "")
+    encoded = json.dumps(data, ensure_ascii=False, sort_keys=True)
     fingerprint = hashlib.sha256(encoded.encode()).hexdigest()
-    with database() as db:
+    with database(timeout=0.05) as db:
         queued_bytes = db.execute("SELECT COALESCE(SUM(LENGTH(data)), 0) FROM events").fetchone()[0]
         if queued_bytes + len(encoded.encode()) > MAX_QUEUE_BYTES:
             raise ValueError("Local capture queue is full. Open Lens Codex to resolve the delivery problem.")
         if kind == "UserPromptSubmit":
-            if not turn:
-                raise ValueError("This Codex hook is missing its turn ID. Update Codex before recording.")
-            path = transcript_path(event, settings)
-            offset = path.stat().st_size if path and path.exists() else 0
             db.execute("INSERT OR IGNORE INTO turns(session,turn,started,path,offset) VALUES (?,?,?,?,?)",
-                       (session, turn, now, str(path) if path else None, offset))
+                       (session, turn, now, item["path"], item["offset"]))
         existing = db.execute("SELECT status FROM turns WHERE session=? AND turn=?", (session, turn)).fetchone()
         if turn and (not existing or existing[0] != "recording"):
             # No historical backfill; finalized turns are immutable.
@@ -190,3 +267,27 @@ def capture(event: dict, now: float | None = None) -> bool:
                        "Session ended before a completed response was captured.", session))
         db.execute("INSERT OR REPLACE INTO health VALUES ('last_capture',?)", (str(now),))
     return True
+
+
+def drain_inbox(*, blocking: bool = False, limit: int = 100) -> dict[str, bool]:
+    results = {}
+    with (state_dir() / "import.lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
+        except BlockingIOError:
+            return results
+        # Bound work done in a hook. The helper drains the rest on its next pass.
+        paths = sorted((state_dir() / "inbox").glob("*.json"))
+        for path in paths if blocking else paths[:limit]:
+            try:
+                results[path.name] = store_event(json.loads(path.read_text()))
+                path.unlink()
+            except sqlite3.OperationalError:
+                safe_health("capture_wait", "Saved locally; waiting for the capture queue to become available.")
+                break
+            except (OSError, ValueError):
+                safe_health("capture_error", "A saved event could not be imported. It is retained locally for recovery.")
+                break
+        else:
+            safe_health("capture_wait", "")
+    return results

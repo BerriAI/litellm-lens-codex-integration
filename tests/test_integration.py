@@ -94,6 +94,7 @@ class CaptureTests(Case):
             self.record(session=f"session-{index}", turn=f"turn-{index}")
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
             list(pool.map(record, range(40)))
+        state.drain_inbox(blocking=True)
         with state.database() as db:
             self.assertEqual(db.execute("SELECT count(*) FROM turns").fetchone()[0], 40)
             self.assertEqual(db.execute("SELECT count(*) FROM events").fetchone()[0], 160)
