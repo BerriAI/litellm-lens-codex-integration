@@ -27,14 +27,26 @@ Recording starts only when you confirm. Enter your key at the hidden prompt, nev
 
 ### From Codex CLI
 
-These install the same plugin for **both desktop and CLI**, using the default shared Codex profile:
+Follow all five steps to install and connect the plugin for **both desktop and CLI**:
 
-```bash
-codex plugin marketplace add BerriAI/litellm-lens-codex-integration
-codex plugin add litellm-lens@berriai-lens
-```
+1. **Install the plugin** from Terminal:
 
-Start a new desktop or CLI chat and ask: **“Use lens-setup to connect my Codex chats to LiteLLM Lens.”** It opens Terminal for the same three questions. If you use a custom `CODEX_HOME`, install into the profile your desktop uses.
+   ```bash
+   codex plugin marketplace add BerriAI/litellm-lens-codex-integration
+   codex plugin add litellm-lens@berriai-lens
+   ```
+
+2. **Start a new chat** in Codex desktop or CLI.
+
+3. **Send this message to start setup:**
+
+   > Use lens-setup to connect my Codex chats to LiteLLM Lens.
+
+4. **Complete setup in the Terminal window that opens.** Enter your gateway URL, LiteLLM virtual key (hidden while typing), and agent name. Confirm to start recording.
+
+5. **Start another new chat and complete a turn.** Open **Lens → Traces** on your gateway to see it.
+
+Desktop and CLI use the same profile by default. If you use a custom `CODEX_HOME`, install into the profile your desktop uses.
 
 You don't need a Lens worker to view traces. A worker is needed to run investigations. Your Codex model, login, and provider stay unchanged.
 
