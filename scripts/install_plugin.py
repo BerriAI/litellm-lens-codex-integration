@@ -15,6 +15,8 @@ def main():
         subprocess.run([binary, "plugin", "marketplace", "add",
                         "BerriAI/litellm-lens-codex-integration", "--json"],
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, timeout=120)
+        subprocess.run([binary, "plugin", "marketplace", "upgrade", "berriai-lens"],
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, timeout=120)
         result = subprocess.run([binary, "plugin", "add", "litellm-lens@berriai-lens", "--json"],
                                 capture_output=True, text=True, check=True, timeout=120)
         root = Path(json.loads(result.stdout)["installedPath"])
