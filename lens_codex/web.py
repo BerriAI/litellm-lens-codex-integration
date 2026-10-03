@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+from socketserver import TCPServer
 import threading
 import time
 import uuid
@@ -13,6 +14,17 @@ import uuid
 from .delivery import flush, retry_blocked, status, verify
 from .install import copy_app, install_hooks, install_plugin_hooks
 from .state import atomic_json, config, gateway_url, save_config, set_enabled, state_dir
+
+
+class LoopbackHTTPServer(ThreadingHTTPServer):
+    def server_bind(self):
+        # HTTPServer resolves getfqdn(host) here. A loopback-only service does
+        # not need DNS, which can stall startup on macOS with slow resolvers.
+        if self.server_address[0] != "127.0.0.1":
+            raise ValueError("The setup server must bind to localhost.")
+        TCPServer.server_bind(self)
+        self.server_name = "localhost"
+        self.server_port = self.server_address[1]
 
 
 def configure(value: dict, check: bool = True) -> None:
@@ -107,7 +119,7 @@ def serve(port: int = 18734) -> None:
                 self.reply(400, json.dumps({"error": str(exc) if isinstance(exc, ValueError) else
                                            "Could not save setup. Check local file permissions."}))
 
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    server = LoopbackHTTPServer(("127.0.0.1", port), Handler)
     server.daemon_threads = True
     atomic_json(state_dir() / "service.json", {"port": server.server_port, "pid": os.getpid()})
     stopping = threading.Event()

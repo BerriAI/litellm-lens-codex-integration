@@ -10,7 +10,7 @@ Run the suite without credentials or network access to a real gateway:
 python3 -m unittest discover -s tests -v
 ```
 
-60 tests cover:
+61 tests cover:
 
 - Stable session/turn identity, resumed conversations, duplicate hooks, multiple prompts in a turn, and isolation between sessions.
 - 40 concurrent sessions writing to the same local queue.

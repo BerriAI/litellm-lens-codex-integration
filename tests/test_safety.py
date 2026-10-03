@@ -9,11 +9,12 @@ import threading
 import time
 import unittest
 from unittest.mock import patch
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 import urllib.request
 import urllib.error
 
 from lens_codex import codex, delivery, state, trace
+from lens_codex.web import LoopbackHTTPServer
 from test_integration import Case
 
 
@@ -87,7 +88,7 @@ class HttpTests(Case):
                 self.send_response(parent.answer)
                 self.end_headers()
                 self.wfile.write(json.dumps(parent.response_body).encode())
-        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Mock)
+        self.server = LoopbackHTTPServer(("127.0.0.1", 0), Mock)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         settings = state.config()
@@ -121,6 +122,12 @@ class HttpTests(Case):
 
 
 class WebTests(unittest.TestCase):
+    def test_loopback_startup_never_uses_dns(self):
+        with patch("socket.getfqdn", side_effect=AssertionError("No DNS for localhost")):
+            with LoopbackHTTPServer(("127.0.0.1", 0), BaseHTTPRequestHandler) as server:
+                self.assertEqual(server.server_name, "localhost")
+                self.assertGreater(server.server_port, 0)
+
     @classmethod
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory()
