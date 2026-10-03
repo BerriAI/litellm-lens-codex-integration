@@ -5,19 +5,11 @@ import json
 import os
 from pathlib import Path
 import queue
-import shutil
 import subprocess
 import threading
 
 from .state import state_dir
-
-
-def engine() -> str:
-    bundled = Path("/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex")
-    result = str(bundled) if bundled.exists() else shutil.which("codex")
-    if not result:
-        raise ValueError("Install Codex and sign in, then open Setup again.")
-    return result
+from .bootstrap import engine
 
 
 class Client:

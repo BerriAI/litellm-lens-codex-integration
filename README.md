@@ -8,27 +8,35 @@ Connect Codex to your LiteLLM gateway, then see the conversation and its tool ca
 
 ## Install
 
-You need **Codex desktop or CLI**, **Python 3.11+**, and a **LiteLLM gateway with tracing enabled**. Automatic background setup currently supports **macOS**.
+You need **Codex desktop or CLI**, **Python 3.11+**, and a **LiteLLM gateway with tracing enabled**. Automatic setup currently supports **macOS**.
 
-### On your Mac
+### From Terminal (recommended)
 
-1. **[Download](https://github.com/BerriAI/litellm-lens-codex-integration/archive/refs/heads/main.zip)** and unzip this repository.
-2. Open **`Setup.command`**. It installs the plugin through Codex and opens a local setup page. If macOS asks, right-click the file and choose **Open**.
-3. Enter your **gateway URL**, **LiteLLM virtual key**, and **agent name**. Review what is recorded and select **Connect to Lens**.
-4. Start a **new Codex chat**, then open **Lens → Traces** on your gateway.
+**Same install for desktop and CLI.** Open Terminal and paste:
 
-You don't need a Lens worker to view traces. A worker is needed to run investigations.
+```bash
+curl -fsSL https://raw.githubusercontent.com/BerriAI/litellm-lens-codex-integration/main/install.sh | bash
+```
+
+It finds your installed Codex, installs the plugin, and opens setup in your browser. Desktop users don't need to install the CLI separately.
+
+1. Enter your **gateway URL**, **LiteLLM virtual key**, and **agent name**. Review what is recorded and select **Connect to Lens**.
+2. Start a **new chat in Codex desktop or CLI**, then open **Lens → Traces** on your gateway.
+
+Recording starts only when you enable it in setup. Enter your key on that local page, not in Terminal or chat. No separate desktop app or Python packages are installed.
 
 ### From Codex CLI
+
+These install the same plugin for **both desktop and CLI**, using the default shared Codex profile:
 
 ```bash
 codex plugin marketplace add BerriAI/litellm-lens-codex-integration
 codex plugin add litellm-lens@berriai-lens
 ```
 
-Start a new Codex chat and ask: **“Use lens-setup to connect my Codex chats to LiteLLM Lens.”** The setup skill opens the same local page. Enter the key there, not in chat.
+Start a new desktop or CLI chat and ask: **“Use lens-setup to connect my Codex chats to LiteLLM Lens.”** It opens the same setup page. If you use a custom `CODEX_HOME`, install into the profile your desktop uses.
 
-Installing the plugin does not start recording. Recording begins only after you enable it in setup. The plugin bundles its hooks and a small background exporter; it does not install a separate desktop app. No Python packages are required, and your model, login, and provider stay unchanged.
+You don't need a Lens worker to view traces. A worker is needed to run investigations. Your Codex model, login, and provider stay unchanged.
 
 ## What you'll see
 
@@ -84,12 +92,7 @@ Setup asks Codex to trust **only this installed plugin’s seven hooks**, after 
 
 See [architecture](docs/architecture.md) and [test results](docs/testing.md) for the exact guarantees and preview limits.
 
-To update, refresh the marketplace and reinstall the plugin, then open setup again:
-
-```bash
-codex plugin marketplace upgrade berriai-lens
-codex plugin add litellm-lens@berriai-lens
-```
+To update, run the install command again. It refreshes the plugin and opens setup, keeping your settings and paused/recording state.
 
 Setup refreshes the local exporter and reviews the current plugin hook definitions. Updates are explicit; nothing is downloaded or replaced in the background.
 
