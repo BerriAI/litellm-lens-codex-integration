@@ -1,6 +1,6 @@
-# Private-preview verification
+# Preview verification
 
-Verified on **October 2, 2026**, against `gateway-dev.litellm-sandbox.ai`.
+Verified on **October 2, 2026**, against a LiteLLM test gateway.
 
 ## Automated checks
 

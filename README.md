@@ -4,7 +4,7 @@
 
 Connect Codex to your LiteLLM gateway, then see the conversation and its tool calls together in Lens. Each completed turn is added to the same trace, including when you reopen a chat.
 
-**Private preview, maintained by BerriAI.** This is an independent integration, not an OpenAI product. Keep this repository private while we test it.
+**Public preview, maintained by BerriAI.** This is an independent integration, not an OpenAI product. The exporter is available for testing; the Codex plugin installation is being prepared.
 
 ## Set up on your Mac
 
@@ -22,7 +22,7 @@ The setup window shows recent deliveries and lets you pause recording. Open `Set
 ### Prefer a terminal?
 
 ```bash
-git clone git@github.com:BerriAI/litellm-lens-codex-integration.git
+git clone https://github.com/BerriAI/litellm-lens-codex-integration.git
 cd litellm-lens-codex-integration
 python3 -m lens_codex setup
 ```
@@ -83,4 +83,4 @@ Setup asks Codex to trust **only this integration's seven hooks**, after you opt
 
 See [architecture](docs/architecture.md) and [test results](docs/testing.md) for the exact guarantees and preview limits.
 
-To update, download the latest private repository version and open `Setup.command` again. Updates are explicit; nothing is downloaded or replaced in the background.
+To update, download the latest repository version and open `Setup.command` again. Updates are explicit; nothing is downloaded or replaced in the background.
