@@ -10,7 +10,17 @@ Connect Codex to your LiteLLM gateway, then see the conversation and its tool ca
 
 You need **Codex desktop or CLI**, **Python 3.11+**, and a **LiteLLM gateway with tracing enabled**. Automatic setup currently supports **macOS**.
 
-### From Terminal (recommended)
+### Ask Codex (recommended)
+
+Paste this into a Codex desktop or CLI chat:
+
+```text
+Install and set up https://github.com/BerriAI/litellm-lens-codex-integration for me. Follow AI_SETUP.md in that repository, handle the installation, and open the private Terminal setup for my gateway URL, key, and agent name.
+```
+
+Codex installs the plugin and opens Terminal. You enter the three values, confirm recording, then start a new chat. Your key stays out of the conversation.
+
+### From Terminal
 
 **Same install for desktop and CLI.** Open Terminal and paste:
 
