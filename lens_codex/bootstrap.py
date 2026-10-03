@@ -43,7 +43,7 @@ def main() -> None:
     launcher = root / "scripts/plugin_entry.py"
     if not launcher.is_file():
         raise SystemExit("The installed plugin is incomplete. Update its marketplace and try again.")
-    print("Opening Lens setup…", flush=True)
+    print("Setting up Lens…", flush=True)
     # Use the interpreter already checked by install.sh, including when PATH has an older Python.
     try:
         subprocess.run([sys.executable, str(launcher), "setup"], check=True)

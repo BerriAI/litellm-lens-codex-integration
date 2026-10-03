@@ -10,7 +10,7 @@ Run the suite without credentials or network access to a real gateway:
 python3 -m unittest discover -s tests -v
 ```
 
-73 tests cover:
+87 tests cover:
 
 - Stable session/turn identity, resumed conversations, duplicate hooks, multiple prompts in a turn, and isolation between sessions.
 - 40 concurrent sessions writing to the same local queue.
@@ -22,6 +22,7 @@ python3 -m unittest discover -s tests -v
 - Preserving other hooks/settings during install and uninstall; refusing malformed configuration; trusting only the exact installed hooks.
 - Native plugin manifests, opt-in capture, paused-state migration, rejecting unrelated plugin hooks, and avoiding duplicate legacy capture.
 - The Terminal installer: desktop and CLI detection, paths with spaces, interrupted downloads, install failures, and cleanup outside the repository.
+- Interactive setup: hidden key input in a real pseudo-terminal with non-interactive stdin, explicit consent, retries, interruption, helper startup failure, and preserving pause across updates.
 - Loopback setup security: Host, Origin, CSRF, credential-free status responses, and browser security headers.
 
 The test workflow runs the suite on macOS and Linux with Python 3.11 and 3.14. Its live status is available under the repository's Actions tab; local success is not a claim that every hosted run has finished.

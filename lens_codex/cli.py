@@ -3,25 +3,24 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from pathlib import Path
 import sys
-import time
-import webbrowser
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Send Codex sessions to LiteLLM Lens.")
     parser.add_argument("--state", help="Private local data directory")
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("setup", "capture", "status", "pause", "resume", "flush", "uninstall"):
+    for name in ("capture", "status", "pause", "resume", "flush", "uninstall"):
         sub.add_parser(name)
+    setup = sub.add_parser("setup")
+    setup.add_argument("--browser", action="store_true", help="Open the optional settings page")
     serving = sub.add_parser("serve")
     serving.add_argument("--port", type=int, default=18734)
     args = parser.parse_args()
     if args.state:
         os.environ["LENS_CODEX_HOME"] = args.state
     os.umask(0o077)
-    from .state import MAX_EVENT_BYTES, capture, config, health, save_config, set_enabled, state_dir
+    from .state import MAX_EVENT_BYTES, capture, config, health, set_enabled
     try:
         if args.command == "capture":
             try:
@@ -41,24 +40,8 @@ def main() -> None:
             from .web import serve
             serve(args.port)
         elif args.command == "setup":
-            from .install import install_service, install_plugin_hooks
-            settings = config()
-            root = os.environ.get("LENS_CODEX_PLUGIN_ROOT")
-            if root and settings.get("gateway"):
-                # Updating an existing installation must preserve a paused state.
-                install_plugin_hooks(Path(settings["codex_home"]), Path(root))
-                save_config({**settings, "capture_mode": "plugin"})
-            install_service()
-            path = state_dir() / "service.json"
-            for _ in range(300):
-                if path.exists():
-                    break
-                time.sleep(0.1)
-            if not path.exists():
-                raise ValueError("The local helper did not start. Check service.log in the Lens data directory.")
-            port = json.loads(path.read_text())["port"]
-            webbrowser.open(f"http://127.0.0.1:{port}/")
-            print("Lens Codex is open in your browser. You can close this terminal.")
+            from .setup import browser_setup, terminal_setup
+            browser_setup() if args.browser else terminal_setup()
         elif args.command == "status":
             from .delivery import status
             print(json.dumps(status(), indent=2))
@@ -76,6 +59,9 @@ def main() -> None:
             from .install import uninstall
             uninstall()
             print("Lens Codex removed. Other hooks are unchanged. Local queued data is retained for your review.")
+    except (KeyboardInterrupt, EOFError):
+        print("\nSetup interrupted. Run it again when you're ready.", file=sys.stderr)
+        raise SystemExit(130) from None
     except (OSError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         raise SystemExit(1) from None

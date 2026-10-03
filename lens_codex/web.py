@@ -27,7 +27,7 @@ class LoopbackHTTPServer(ThreadingHTTPServer):
         self.server_port = self.server_address[1]
 
 
-def configure(value: dict, check: bool = True) -> None:
+def configure(value: dict, check: bool = True, *, enabled: bool = True) -> None:
     old = config()
     gateway = gateway_url(str(value.get("gateway", "")))
     key = str(value.get("api_key", "")).strip() or old.get("api_key", "")
@@ -41,7 +41,7 @@ def configure(value: dict, check: bool = True) -> None:
         if any(v for k, v in counts.items() if k not in {"sent", "discarded"}):
             raise ValueError("There are saved turns for the current gateway. Resolve them before changing gateways.")
     settings = {**old, "gateway": gateway, "api_key": key, "agent_name": name,
-                "enabled": True, "installation_id": old.get("installation_id", str(uuid.uuid4())),
+                "enabled": enabled, "installation_id": old.get("installation_id", str(uuid.uuid4())),
                 "codex_home": old.get("codex_home", str(Path(os.environ.get("CODEX_HOME", "~/.codex")).expanduser()))}
     if check:
         verify(settings)

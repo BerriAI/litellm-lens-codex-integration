@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "litellm-lens-codex"
-version = "0.2.2"
+version = "0.2.3"
 description = "Public preview: send Codex sessions to LiteLLM Lens"
 requires-python = ">=3.11"
 dependencies = []

@@ -18,12 +18,12 @@ You need **Codex desktop or CLI**, **Python 3.11+**, and a **LiteLLM gateway wit
 curl -fsSL https://raw.githubusercontent.com/BerriAI/litellm-lens-codex-integration/main/install.sh | bash
 ```
 
-It finds your installed Codex, installs the plugin, and opens setup in your browser. Desktop users don't need to install the CLI separately.
+It finds your installed Codex and installs the plugin. Desktop users don't need to install the CLI separately.
 
-1. Enter your **gateway URL**, **LiteLLM virtual key**, and **agent name**. Review what is recorded and select **Connect to Lens**.
+1. Answer three questions in Terminal: your **gateway URL**, **LiteLLM virtual key** (hidden while typing), and **agent name**. Confirm when you're ready to start recording.
 2. Start a **new chat in Codex desktop or CLI**, then open **Lens → Traces** on your gateway.
 
-Recording starts only when you enable it in setup. Enter your key on that local page, not in Terminal or chat. No separate desktop app or Python packages are installed.
+Recording starts only when you confirm. Enter your key at the hidden prompt, never in a command or chat. No separate desktop app or Python packages are installed.
 
 ### From Codex CLI
 
@@ -34,7 +34,7 @@ codex plugin marketplace add BerriAI/litellm-lens-codex-integration
 codex plugin add litellm-lens@berriai-lens
 ```
 
-Start a new desktop or CLI chat and ask: **“Use lens-setup to connect my Codex chats to LiteLLM Lens.”** It opens the same setup page. If you use a custom `CODEX_HOME`, install into the profile your desktop uses.
+Start a new desktop or CLI chat and ask: **“Use lens-setup to connect my Codex chats to LiteLLM Lens.”** It opens Terminal for the same three questions. If you use a custom `CODEX_HOME`, install into the profile your desktop uses.
 
 You don't need a Lens worker to view traces. A worker is needed to run investigations. Your Codex model, login, and provider stay unchanged.
 
@@ -53,7 +53,7 @@ When available, token totals come from the current turn's local Codex transcript
 
 ## Pause or remove
 
-Ask Codex to use **lens-setup** to open the control page, then select **Pause recording**. You can also run these commands from a downloaded repository:
+Ask Codex to **“Use lens-setup to pause recording.”** You can also ask it to open Lens settings for optional browser controls. That page does not need to stay open. From a downloaded repository, the equivalent commands are:
 
 ```bash
 python3 -m lens_codex pause
@@ -73,7 +73,7 @@ Then remove **LiteLLM Lens** from Codex’s Plugins page. Uninstalling only the 
 
 ## If nothing appears
 
-Ask Codex to open Lens setup first. It will show whether a turn is still in progress, waiting to send, blocked by the gateway, or delivered.
+Ask Codex to open Lens settings. The optional page shows whether a turn is still in progress, waiting to send, blocked by the gateway, or delivered.
 
 - **No recent activity:** make sure the plugin is enabled, reopen setup, and start a new chat. Check `/hooks` in the Codex CLI if your organization manages hooks centrally.
 - **Gateway rejected the key:** open **Settings**, replace the key, and reconnect. The saved turns retry automatically.
@@ -92,7 +92,7 @@ Setup asks Codex to trust **only this installed plugin’s seven hooks**, after 
 
 See [architecture](docs/architecture.md) and [test results](docs/testing.md) for the exact guarantees and preview limits.
 
-To update, run the install command again. It refreshes the plugin and opens setup, keeping your settings and paused/recording state.
+To update, run the install command again. It refreshes the plugin and helper, keeping your settings and paused/recording state. An existing connection skips the setup questions.
 
 Setup refreshes the local exporter and reviews the current plugin hook definitions. Updates are explicit; nothing is downloaded or replaced in the background.
 

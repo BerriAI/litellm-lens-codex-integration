@@ -1,4 +1,4 @@
-"""Install the public plugin through Codex, then open its local setup page."""
+"""Install the public plugin through Codex, then start Terminal setup."""
 from pathlib import Path
 import sys
 
