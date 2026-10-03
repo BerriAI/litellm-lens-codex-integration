@@ -11,7 +11,7 @@ import time
 import uuid
 
 from .delivery import flush, retry_blocked, status, verify
-from .install import copy_app, install_hooks
+from .install import copy_app, install_hooks, install_plugin_hooks
 from .state import atomic_json, config, gateway_url, save_config, set_enabled, state_dir
 
 
@@ -34,9 +34,15 @@ def configure(value: dict, check: bool = True) -> None:
     if check:
         verify(settings)
     copy_app()
-    install_hooks(Path(settings["codex_home"]))
-    from .codex import approve_installed_hooks
-    approve_installed_hooks()
+    plugin_root = os.environ.get("LENS_CODEX_PLUGIN_ROOT")
+    if plugin_root:
+        install_plugin_hooks(Path(settings["codex_home"]), Path(plugin_root))
+        settings["capture_mode"] = "plugin"
+    else:
+        install_hooks(Path(settings["codex_home"]))
+        from .codex import approve_installed_hooks
+        approve_installed_hooks()
+        settings["capture_mode"] = "user"
     save_config(settings)
     retry_blocked()
 

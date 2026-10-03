@@ -83,23 +83,25 @@ class Client:
             return message.get("result")
 
 
-def own_hooks(result: dict, command: str, home: Path) -> list[dict]:
-    path = (home / "hooks.json").resolve()
+def own_hooks(result: dict, command: str, home: Path, plugin_root: Path | None = None) -> list[dict]:
+    path = (plugin_root / "hooks/hooks.json" if plugin_root else home / "hooks.json").resolve()
     unique = {}
     for entry in result.get("data", []):
         for hook in entry.get("hooks", []):
             if (hook.get("handlerType") == "command" and hook.get("command") == command
-                    and Path(hook.get("sourcePath", "")).resolve() == path and hook.get("source") == "user"):
+                    and Path(hook.get("sourcePath", "")).resolve() == path
+                    and hook.get("source") == ("plugin" if plugin_root else "user")):
                 unique[hook["key"]] = hook
     return list(unique.values())
 
 
-def approve_installed_hooks(binary: str | None = None) -> None:
-    """Called only by explicit setup. Never approve project/plugin/unrelated user hooks."""
-    manifest = json.loads((state_dir() / "installation.json").read_text())
+def approve_installed_hooks(binary: str | None = None, manifest: dict | None = None) -> None:
+    """Called only by explicit setup. Never approve unrelated hooks."""
+    manifest = manifest if manifest is not None else json.loads((state_dir() / "installation.json").read_text())
     home = Path(manifest["codex_home"])
+    root = Path(manifest["plugin_root"]) if manifest.get("mode") == "plugin" else None
     with Client(binary or engine(), home) as client:
-        hooks = own_hooks(client.call("hooks/list", {"cwds": [str(home)]}), manifest["command"], home)
+        hooks = own_hooks(client.call("hooks/list", {"cwds": [str(home)]}), manifest["command"], home, root)
         if len(hooks) != 7:
             raise ValueError("Codex could not find all seven Lens hooks. Update Codex, then try setup again.")
         edits = [{"keyPath": "hooks.state." + json.dumps(hook["key"]),

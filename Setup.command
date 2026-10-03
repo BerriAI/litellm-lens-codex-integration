@@ -13,4 +13,4 @@ if [ -z "$PYTHON" ]; then
   read -r -p "Press Return to close."
   exit 1
 fi
-"$PYTHON" -m lens_codex setup || read -r -p "Setup did not finish. Press Return to close."
+"$PYTHON" scripts/install_plugin.py || read -r -p "Setup did not finish. Press Return to close."

@@ -22,7 +22,7 @@ The primary input is Codex's [documented lifecycle hooks](https://learn.chatgpt.
 
 A narrow transcript reader uses only the hook-supplied path under the configured Codex home. It looks for exact turn IDs, completed-turn markers and token counts. A bounded lookbehind finds the turn identity written just before the prompt hook. It never exports raw transcripts, rate-limit/account fields, system instructions, or reasoning text. Unknown or missing usage remains unknown.
 
-The supported desktop path uses the same app-server protocol and hook trust configuration as Codex. Setup discovers its own exact hook commands through `hooks/list` and persists only their current hashes through `config/batchWrite`. This does not bypass Codex's hook trust mechanism. Organization-managed restrictions still apply.
+The supported desktop path uses the same app-server protocol and hook trust configuration as Codex. Setup discovers its own exact hook commands through `hooks/list` and matches the installed plugin’s source path and exact command, and persists only their current hashes through `config/batchWrite`. This does not bypass Codex's hook trust mechanism. Organization-managed restrictions still apply.
 
 Known coverage limits are in the README. In particular, raw LLM request/response tracing would require a supported Codex export surface; a local adapter cannot recover data that Codex never exposes. The hook/transcript combination must not be described as a complete model-traffic recorder.
 
@@ -41,4 +41,4 @@ This favors avoiding duplicate traces over automatic recovery when the server's 
 
 The setup server binds only to `127.0.0.1`, validates Host and Origin, requires a per-process CSRF token for mutations, disallows framing, uses no external assets, and never returns the API key. Remote gateways require HTTPS; localhost HTTP is available for development. Redirects are not followed with credentials.
 
-Hook/config changes are backed up. Installation merges its own hooks into existing configuration; uninstall removes only its exact command. Existing model/provider/OTel settings remain untouched. Private files use owner-only permissions.
+Hook/config changes are backed up. Codex discovers the hooks from the installed plugin. Setup enables hooks and trusts only this plugin’s definitions; it does not copy them into the user’s hooks file. Migration from the earlier script installer removes only its recorded legacy command. Existing model/provider/OTel settings remain untouched. Private files use owner-only permissions.

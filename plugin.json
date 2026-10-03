@@ -1,0 +1,25 @@
+{
+  "name": "litellm-lens",
+  "version": "0.2.0",
+  "description": "Send Codex sessions to LiteLLM Lens using local lifecycle hooks.",
+  "author": {
+    "name": "BerriAI"
+  },
+  "homepage": "https://github.com/BerriAI/litellm-lens-codex-integration",
+  "repository": "https://github.com/BerriAI/litellm-lens-codex-integration",
+  "license": "MIT",
+  "extensions": {
+    "com.openai": {
+      "hooks": "./hooks/hooks.json",
+      "interface": {
+        "displayName": "LiteLLM Lens",
+        "shortDescription": "See your Codex chats and tools in Lens.",
+        "developerName": "BerriAI",
+        "category": "Productivity",
+        "defaultPrompt": [
+          "Set up LiteLLM Lens for my Codex chats."
+        ]
+      }
+    }
+  }
+}

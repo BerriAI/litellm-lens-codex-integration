@@ -10,7 +10,7 @@ Run the suite without credentials or network access to a real gateway:
 python3 -m unittest discover -s tests -v
 ```
 
-52 tests cover:
+60 tests cover:
 
 - Stable session/turn identity, resumed conversations, duplicate hooks, multiple prompts in a turn, and isolation between sessions.
 - 40 concurrent sessions writing to the same local queue.
@@ -19,7 +19,8 @@ python3 -m unittest discover -s tests -v
 - Pause during a turn, no historical backfill, private file permissions, key redaction, and restricted transcript paths.
 - Exact-turn token totals, repeated usage events, partial transcript writes, and missing/changed usage data.
 - Real local HTTP transport, credential rejection, rate limiting, lost acknowledgements, partial acceptance, deduplication, and delivery reconciliation.
-- Preserving other hooks/settings during install and uninstall; refusing malformed configuration; trusting only the exact installed user hooks.
+- Preserving other hooks/settings during install and uninstall; refusing malformed configuration; trusting only the exact installed hooks.
+- Native plugin manifests, opt-in capture, paused-state migration, rejecting unrelated plugin hooks, and avoiding duplicate legacy capture.
 - Loopback setup security: Host, Origin, CSRF, credential-free status responses, and browser security headers.
 
 The test workflow runs the suite on macOS and Linux with Python 3.11 and 3.14. Its live status is available under the repository's Actions tab; local success is not a claim that every hosted run has finished.
@@ -32,6 +33,7 @@ The test workflow runs the suite on macOS and Linux with Python 3.11 and 3.14. I
 | Desktop-bundled Codex 0.159.0-alpha.12.1 | Same two-turn test | Same grouping and content |
 | Desktop app-server protocol | Three turns, including a running command cancelled by `turn/interrupt` | Same trace; cancellation recorded as an error |
 | Desktop app-server protocol | Trust only this integration's seven hooks through Codex's config API | All seven trusted; no hook-trust bypass flag |
+| Both engines | Native Codex plugin installation and trusted plugin hooks | Same two-turn grouping; no hook-trust bypass |
 | Both engines | 6,000-character command output | End marker and complete output verified by reading the stored span from Lens |
 | Both engines | Token usage | Nonzero totals verified in the gateway trace summary |
 | Both engines | Repeat delivery processing | No additional spans |
@@ -58,13 +60,13 @@ Not yet certified: nested subagent reconstruction, hosted-tool internals, remote
 
 ## Reproduce live tests
 
-These commands create isolated Codex profiles and send only generated test content. They require an already signed-in Codex auth file and a test gateway; they do not read normal conversation history. The first smoke script uses a hook-trust bypass **only in its isolated test profile**. The app-server script uses normal, exact-hook trust registration.
+These commands create isolated Codex profiles and send only generated test content. They require an already signed-in Codex auth file and a test gateway; they do not read normal conversation history. Both scripts use normal, exact-hook trust registration; neither bypasses hook trust. Add `--plugin` to exercise installation and capture through the native plugin.
 
 ```bash
 export LENS_GATEWAY="https://your-test-gateway"
 export LENS_API_KEY="<test-key>"
 export CODEX_AUTH_FILE="$HOME/.codex/auth.json"
-PYTHONPATH=. python3 scripts/live_smoke.py --engine "$(command -v codex)" --output /tmp/lens-qa
+PYTHONPATH=. python3 scripts/live_smoke.py --plugin --engine "$(command -v codex)" --output /tmp/lens-qa
 PYTHONPATH=. python3 scripts/live_appserver.py /tmp/lens-qa
 ```
 

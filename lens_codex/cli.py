@@ -41,14 +41,22 @@ def main() -> None:
             from .web import serve
             serve(args.port)
         elif args.command == "setup":
-            from .install import install_service
+            from .install import install_service, install_plugin_hooks
+            settings = config()
+            root = os.environ.get("LENS_CODEX_PLUGIN_ROOT")
+            if root and settings.get("gateway"):
+                # Updating an existing installation must preserve a paused state.
+                install_plugin_hooks(Path(settings["codex_home"]), Path(root))
+                save_config({**settings, "capture_mode": "plugin"})
             install_service()
             path = state_dir() / "service.json"
-            for _ in range(50):
+            for _ in range(300):
                 if path.exists():
                     break
                 time.sleep(0.1)
-            port = json.loads(path.read_text())["port"] if path.exists() else 18734
+            if not path.exists():
+                raise ValueError("The local helper did not start. Check service.log in the Lens data directory.")
+            port = json.loads(path.read_text())["port"]
             webbrowser.open(f"http://127.0.0.1:{port}/")
             print("Lens Codex is open in your browser. You can close this terminal.")
         elif args.command == "status":

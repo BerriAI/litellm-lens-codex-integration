@@ -144,6 +144,11 @@ def capture(event: dict, now: float | None = None) -> bool:
     settings = config()
     if not settings.get("enabled"):
         return False
+    plugin_capture = bool(os.environ.get("LENS_CODEX_PLUGIN_ROOT"))
+    if plugin_capture != (settings.get("capture_mode") == "plugin"):
+        # Installing a plugin alone is not consent; also prevent old user hooks
+        # from recording a second copy after migration to the plugin.
+        return False
     now = time.time() if now is None else now
     kind, session, turn = event.get("hook_event_name"), event.get("session_id"), event.get("turn_id", "")
     if kind not in EVENTS or not isinstance(session, str) or not session or len(session) > 200:

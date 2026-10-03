@@ -4,30 +4,31 @@
 
 Connect Codex to your LiteLLM gateway, then see the conversation and its tool calls together in Lens. Each completed turn is added to the same trace, including when you reopen a chat.
 
-**Public preview, maintained by BerriAI.** This is an independent integration, not an OpenAI product. The exporter is available for testing; the Codex plugin installation is being prepared.
+**Public preview, maintained by BerriAI.** An independent Codex plugin, not an OpenAI product.
 
-## Set up on your Mac
+## Install
 
-You need Codex installed and signed in, Python 3.11 or newer, and a LiteLLM gateway with tracing enabled.
+You need **Codex desktop or CLI**, **Python 3.11+**, and a **LiteLLM gateway with tracing enabled**. Automatic background setup currently supports **macOS**.
 
-1. **[Download the repository](https://github.com/BerriAI/litellm-lens-codex-integration/archive/refs/heads/main.zip)** and unzip it.
-2. Open **`Setup.command`**. If macOS asks, right-click it and choose **Open**. A setup window opens in your browser.
-3. Enter your **gateway URL** and **LiteLLM virtual key**, name your agent, and select **Connect to Lens**.
-4. Start a new chat in Codex. If the app was already open, restart it to load the new hooks.
+### On your Mac
 
-That's it. Open **Lens → Traces** on your gateway and select your agent name. You don't need a Lens worker to view traces; a worker is needed to run investigations.
+1. **[Download](https://github.com/BerriAI/litellm-lens-codex-integration/archive/refs/heads/main.zip)** and unzip this repository.
+2. Open **`Setup.command`**. It installs the plugin through Codex and opens a local setup page. If macOS asks, right-click the file and choose **Open**.
+3. Enter your **gateway URL**, **LiteLLM virtual key**, and **agent name**. Review what is recorded and select **Connect to Lens**.
+4. Start a **new Codex chat**, then open **Lens → Traces** on your gateway.
 
-The setup window shows recent deliveries and lets you pause recording. Open `Setup.command` again whenever you need it.
+You don't need a Lens worker to view traces. A worker is needed to run investigations.
 
-### Prefer a terminal?
+### From Codex CLI
 
 ```bash
-git clone https://github.com/BerriAI/litellm-lens-codex-integration.git
-cd litellm-lens-codex-integration
-python3 -m lens_codex setup
+codex plugin marketplace add BerriAI/litellm-lens-codex-integration
+codex plugin add litellm-lens@berriai-lens
 ```
 
-No Python packages need to be installed. The Mac helper starts when you sign in. It does not change your Codex model, login, provider, or other integrations.
+Start a new Codex chat and ask: **“Use lens-setup to connect my Codex chats to LiteLLM Lens.”** The setup skill opens the same local page. Enter the key there, not in chat.
+
+Installing the plugin does not start recording. Recording begins only after you enable it in setup. The plugin bundles its hooks and a small background exporter; it does not install a separate desktop app. No Python packages are required, and your model, login, and provider stay unchanged.
 
 ## What you'll see
 
@@ -44,7 +45,7 @@ When available, token totals come from the current turn's local Codex transcript
 
 ## Pause or remove
 
-Use **Pause recording** in the setup window, or:
+Ask Codex to use **lens-setup** to open the control page, then select **Pause recording**. You can also run these commands from a downloaded repository:
 
 ```bash
 python3 -m lens_codex pause
@@ -60,13 +61,13 @@ To remove the helper and its hooks:
 python3 -m lens_codex uninstall
 ```
 
-Other Codex hooks are preserved. The local key is removed. Queued data remains in `~/.local/share/litellm-lens-codex` for your review; delete that folder if you also want to remove it. Traces already sent to your gateway are not deleted.
+Then remove **LiteLLM Lens** from Codex’s Plugins page. Uninstalling only the plugin stops future hook capture; remove the helper first to stop delivery of any queued turns and clear the local key. Other Codex hooks are preserved. Queued data remains in `~/.local/share/litellm-lens-codex` for your review; delete that folder if you also want to remove it. Traces already sent to your gateway are not deleted.
 
 ## If nothing appears
 
-Open the setup window first. It will show whether a turn is still in progress, waiting to send, blocked by the gateway, or delivered.
+Ask Codex to open Lens setup first. It will show whether a turn is still in progress, waiting to send, blocked by the gateway, or delivered.
 
-- **No recent activity:** restart Codex and start a new chat. Check `/hooks` in the Codex CLI if your organization manages hooks centrally.
+- **No recent activity:** make sure the plugin is enabled, reopen setup, and start a new chat. Check `/hooks` in the Codex CLI if your organization manages hooks centrally.
 - **Gateway rejected the key:** open **Settings**, replace the key, and reconnect. The saved turns retry automatically.
 - **Delivery not confirmed:** the helper checks Lens before retrying. It will not blindly resend a possibly accepted trace. If the gateway never received it, the queued content is kept for diagnosis rather than silently dropped.
 - **Token usage unavailable:** the conversation still arrives. The current Codex version may use a transcript format this preview doesn't recognize.
@@ -79,8 +80,19 @@ Prompts and tool output can contain source code and secrets. Enable recording on
 
 The key and pending turns are stored in a private directory on your Mac. The key is not put in hook commands, browser storage, URLs, or logs. Sent prompt/tool content is removed from the local queue; delivery metadata is retained for seven days. TLS verification stays enabled. No analytics or third-party browser assets are used.
 
-Setup asks Codex to trust **only this integration's seven hooks**, after you opt in. It does not disable hook trust or approve unrelated hooks. The old OTel bridge, if installed, is left alone; disable it separately to prevent double recording.
+Setup asks Codex to trust **only this installed plugin’s seven hooks**, after you opt in. Updating an existing connection preserves its paused or enabled state. It does not disable hook trust or approve unrelated hooks. The old OTel bridge, if installed, is left alone; disable it separately to prevent double recording.
 
 See [architecture](docs/architecture.md) and [test results](docs/testing.md) for the exact guarantees and preview limits.
 
-To update, download the latest repository version and open `Setup.command` again. Updates are explicit; nothing is downloaded or replaced in the background.
+To update, refresh the marketplace and reinstall the plugin, then open setup again:
+
+```bash
+codex plugin marketplace upgrade berriai-lens
+codex plugin add litellm-lens@berriai-lens
+```
+
+Setup refreshes the local exporter and reviews the current plugin hook definitions. Updates are explicit; nothing is downloaded or replaced in the background.
+
+## Contributing
+
+Issues and pull requests are welcome. Public access does not grant push access; changes are reviewed by BerriAI maintainers. See [security reporting](SECURITY.md) for vulnerabilities.

@@ -55,6 +55,47 @@ def write_text(path: Path, value: str) -> None:
             os.unlink(temp)
 
 
+def remove_user_hooks(manifest: dict) -> None:
+    """Remove only the exact legacy command recorded by our own installer."""
+    if manifest.get("mode") == "plugin" or not manifest.get("command"):
+        return
+    path = Path(manifest["codex_home"]) / "hooks.json"
+    if not path.exists():
+        return
+    hooks = json.loads(path.read_text())
+    for event, groups in list(hooks.get("hooks", {}).items()):
+        for group in groups:
+            group["hooks"] = [h for h in group.get("hooks", []) if h.get("command") != manifest["command"]]
+        hooks["hooks"][event] = [g for g in groups if g.get("hooks")]
+        if not hooks["hooks"][event]:
+            del hooks["hooks"][event]
+    atomic_json(path, hooks)
+
+
+def install_plugin_hooks(codex_home: Path, root: Path, binary: str | None = None) -> None:
+    """Enable and trust only hooks discovered from this installed plugin."""
+    from .codex import approve_installed_hooks
+
+    codex_home, root = codex_home.expanduser().resolve(), root.resolve()
+    manifest_path = state_dir() / "installation.json"
+    previous = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
+    config_path = codex_home / "config.toml"
+    source = config_path.read_text() if config_path.exists() else ""
+    updated = enable_hooks(source)
+    backup = state_dir() / "backup"
+    backup.mkdir(exist_ok=True, mode=0o700)
+    if config_path.exists() and not (backup / "config.toml").exists():
+        shutil.copy2(config_path, backup / "config.toml")
+        (backup / "config.toml").chmod(0o600)
+    write_text(config_path, updated)
+    manifest = {"mode": "plugin", "plugin_root": str(root), "codex_home": str(codex_home),
+                "command": f'bash "{root}/scripts/run.sh" capture'}
+    # Validate against actual Codex discovery before replacing any legacy hooks.
+    approve_installed_hooks(binary=binary, manifest=manifest)
+    remove_user_hooks(previous)
+    atomic_json(manifest_path, manifest)
+
+
 def install_hooks(codex_home: Path) -> None:
     codex_home = codex_home.expanduser().resolve()
     codex_home.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -110,12 +151,15 @@ def install_service() -> None:
         raise ValueError("Automatic desktop setup currently supports macOS. Run `python3 -m lens_codex serve` on Linux.")
     copy_app()
     state = state_dir()
+    (state / "service.json").unlink(missing_ok=True)
     path = Path.home() / "Library/LaunchAgents" / (LABEL + ".plist")
     path.parent.mkdir(parents=True, exist_ok=True)
     plist = {"Label": LABEL, "ProgramArguments": [sys.executable, str(state / "app/lens.py"),
              "--state", str(state), "serve"], "RunAtLoad": True, "KeepAlive": {"SuccessfulExit": False},
              "ProcessType": "Background", "ThrottleInterval": 10, "Umask": 0o077,
              "StandardOutPath": str(state / "service.log"), "StandardErrorPath": str(state / "service.log")}
+    if os.environ.get("LENS_CODEX_PLUGIN_ROOT"):
+        plist["EnvironmentVariables"] = {"LENS_CODEX_PLUGIN_ROOT": os.environ["LENS_CODEX_PLUGIN_ROOT"]}
     path.write_bytes(plistlib.dumps(plist))
     path.chmod(0o600)
     subprocess.run(["launchctl", "bootout", f"gui/{os.getuid()}/{LABEL}"], capture_output=True)
@@ -128,16 +172,7 @@ def uninstall() -> None:
     manifest_path = state_dir() / "installation.json"
     if manifest_path.exists():
         manifest = json.loads(manifest_path.read_text())
-        path = Path(manifest["codex_home"]) / "hooks.json"
-        if path.exists():
-            hooks = json.loads(path.read_text())
-            for event, groups in list(hooks.get("hooks", {}).items()):
-                for group in groups:
-                    group["hooks"] = [h for h in group.get("hooks", []) if h.get("command") != manifest["command"]]
-                hooks["hooks"][event] = [g for g in groups if g.get("hooks")]
-                if not hooks["hooks"][event]:
-                    del hooks["hooks"][event]
-            atomic_json(path, hooks)
+        remove_user_hooks(manifest)
         manifest_path.unlink()
     # Keep hooks enabled: another integration may use them now. Never restore an old whole-file backup.
     from .state import config, save_config

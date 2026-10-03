@@ -124,21 +124,32 @@ class WebTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(cls.temp.cleanup)
         cls.directory = Path(cls.temp.name)
+        cls.log = (cls.directory / "test-server.log").open("w+")
+        cls.addClassCleanup(cls.log.close)
         cls.process = subprocess.Popen([sys.executable, "-m", "lens_codex", "--state", str(cls.directory),
-                                        "serve", "--port", "0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        for _ in range(100):
+                                        "serve", "--port", "0"], stdout=cls.log, stderr=cls.log)
+        def stop():
+            cls.process.terminate()
+            try:
+                cls.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                cls.process.kill()
+                cls.process.wait()
+        cls.addClassCleanup(stop)
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
             if (cls.directory / "service.json").exists():
                 break
+            if cls.process.poll() is not None:
+                break
             time.sleep(.05)
+        if not (cls.directory / "service.json").exists():
+            cls.log.seek(0)
+            raise RuntimeError(f"Test server did not start (exit={cls.process.poll()}): {cls.log.read()}")
         port = json.loads((cls.directory / "service.json").read_text())["port"]
         cls.url = f"http://127.0.0.1:{port}"
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.process.terminate()
-        cls.process.wait(timeout=5)
-        cls.temp.cleanup()
 
     def test_status_has_no_credential_fields(self):
         with urllib.request.urlopen(self.url + "/status") as response:
