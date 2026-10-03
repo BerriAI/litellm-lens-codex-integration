@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "litellm-lens-codex"
+version = "0.1.0"
+description = "Private preview: send Codex sessions to LiteLLM Lens"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+lens-codex = "lens_codex.cli:main"
+
+[tool.setuptools.package-data]
+lens_codex = ["setup.html"]

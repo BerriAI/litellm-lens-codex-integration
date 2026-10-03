@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Codex · Lens</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#16222b;background:#f5f7f6;font-size:15px;line-height:1.5}*{box-sizing:border-box}body{margin:0;padding:56px 20px}main{max-width:680px;margin:auto}header{display:flex;align-items:center;gap:12px;margin-bottom:32px}header svg{width:30px;height:30px}header strong{font-size:19px;letter-spacing:-.4px}.preview{margin-left:auto;color:#65736c;font-size:12px}h1{font-size:30px;line-height:1.2;letter-spacing:-.8px;margin:0 0 12px;font-weight:600}p{color:#617168;margin:0 0 24px}section{background:white;border:1px solid #dfe5e1;border-radius:16px;padding:32px;margin-bottom:16px;box-shadow:0 5px 20px #18261c04}label{display:block;font-size:14px;font-weight:550;margin:22px 0 8px}input{width:100%;border:1px solid #cbd5cd;border-radius:8px;font:inherit;padding:11px 13px;background:#fff;color:inherit}input:focus{outline:3px solid #d9eade;border-color:#58806b}.help{font-size:13px;color:#738176;margin:7px 0 0}button,a.button{border:1px solid #cdd8d0;border-radius:8px;padding:10px 16px;background:white;font:inherit;font-weight:550;cursor:pointer;color:inherit;text-decoration:none;display:inline-block}button.primary{background:#173b2a;color:white;border-color:#173b2a}button:disabled{opacity:.5;cursor:wait}.actions{display:flex;gap:10px;align-items:center;margin-top:24px}.actions .push{margin-left:auto}.notice{border-radius:9px;background:#f1f6f2;padding:14px 16px;font-size:14px;margin:22px 0 0}.error{background:#fff2ed;color:#8b3a22}.badge{display:inline-flex;gap:8px;align-items:center;font-size:13px;color:#376b4d}.dot{width:7px;height:7px;background:currentColor;border-radius:50%}.muted{color:#7a837d}.row{display:flex;justify-content:space-between;gap:16px}.small{font-size:13px}h2{font-size:16px;margin:0 0 10px;font-weight:600}.item{padding:14px 0;border-bottom:1px solid #edf0ee}.item:last-child{border:0;padding-bottom:0}.item a{color:#23573b}.item p{margin:5px 0 0;font-size:13px}.consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;font-weight:400;color:#58665e}.consent input{width:16px;margin:3px 0 0;flex-shrink:0}.link{border:0;background:none;padding:0;font-size:13px;color:#637168}footer{font-size:12px;color:#7c877f;text-align:center;margin-top:24px}code{font-size:13px;background:#edf2ee;border-radius:4px;padding:1px 4px}[hidden]{display:none!important}#feedback{margin-bottom:16px}#feedback:empty{display:none}@media(max-width:520px){body{padding:24px 14px}section{padding:24px}h1{font-size:26px}.actions{flex-wrap:wrap}}
+</style></head>
+<body><main>
+<header><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="16" cy="16" r="12"/><path d="M9 6l14 20M5 13h24M10 27L22 5"/></svg><strong>Codex → Lens</strong><span class="preview">Private preview</span></header>
+<div id="feedback" role="alert" class="notice error"></div>
+<section id="setup">
+<h1>Your sessions, in Lens.</h1><p>Connect once. Each Codex chat becomes a trace you can explore and investigate.</p>
+<form id="connect">
+<label for="gateway">LiteLLM gateway</label><input id="gateway" type="url" placeholder="https://gateway.example.com" autocomplete="url" required>
+<label for="key">Virtual key</label><input id="key" type="password" placeholder="sk-…" autocomplete="off"><div class="help">Use a key with permission to send and view traces.</div>
+<label for="agent">Agent name</label><input id="agent" value="codex" maxlength="100" required><div class="help">This is the name you’ll see in Lens.</div>
+<label class="consent"><input id="consent" type="checkbox" required><span>Enable the Lens hooks and send my new prompts, final replies, and local tool inputs and outputs to this gateway. These can contain private code or data. Existing conversations are not backfilled.</span></label>
+<div class="actions"><button class="primary" id="save">Connect to Lens</button><button type="button" id="back" hidden>Cancel</button></div>
+</form></section>
+<section id="dashboard" hidden>
+<div class="row" style="margin-bottom:20px"><span class="badge" id="badge"><span class="dot"></span><span id="state">Ready</span></span><button class="link" id="settings">Settings</button></div>
+<h1 id="heading">Ready for your next chat.</h1><p id="description">Start a new conversation in Codex. Completed turns will appear together in Lens.</p>
+<div class="notice" id="next">Start a new chat in Codex. If capture does not begin, restart Codex to load the newly enabled hooks. Your other integrations stay in place.</div>
+<div class="actions"><a class="button" id="lens" target="_blank" rel="noreferrer">Open Lens ↗</a><button class="push" id="pause">Pause recording</button></div>
+</section>
+<section id="activity" hidden><h2>Recent activity</h2><div id="items"></div></section>
+<footer>Runs on this Mac. No OpenAI login or model settings are changed.</footer>
+</main>
+<script>
+const token='__CSRF__';let latest={},editing=false;
+const $=id=>document.getElementById(id);
+function error(message){$('feedback').textContent=message||''}
+async function action(path,body={}){error('');const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-Lens-Token':token},body:JSON.stringify(body)});const data=await r.json();if(!r.ok)throw Error(data.error||'Something went wrong. Try again.');return data}
+function render(s){latest=s;const configured=s.configured;$('setup').hidden=configured&&!editing;$('dashboard').hidden=!configured||editing;$('activity').hidden=!configured||editing||!s.recent.length;if(!configured||editing)return;
+const failed=(s.counts.blocked||0)+(s.counts.uncertain||0),pending=(s.counts.pending||0)+(s.counts.retry||0);$('state').textContent=!s.enabled?'Paused':failed?'Needs attention':'Recording enabled';$('badge').style.color=failed?'#9a5231':!s.enabled?'#7a837d':'#376b4d';$('pause').textContent=s.enabled?'Pause recording':'Resume recording';$('heading').textContent=!s.enabled?'Recording is paused.':failed?'A trace needs attention.':s.counts.sent?'Your sessions are connected.':'Ready for your next chat.';$('description').textContent=!s.enabled?'Nothing new is captured or sent. Resuming will also send previously queued turns.':failed?'Your captured turns are saved on this Mac. Check the delivery message below.':pending?`${pending} completed turn${pending===1?' is':'s are'} waiting to reach Lens.`:'Each chat stays together as one trace. New turns appear after Codex finishes replying.';$('next').hidden=!!s.health.last_capture||!s.enabled;$('lens').href=s.gateway+'/ui/lens?tab=traces';
+const container=$('items');container.replaceChildren();s.recent.forEach(item=>{const row=document.createElement('div');row.className='item';const title=document.createElement('div');title.className='row small';const left=document.createElement('span');left.textContent=new Date(item.started*1000).toLocaleString();const right=document.createElement('span');right.textContent=({sent:'Delivered',recording:'In progress',pending:'Preparing',blocked:'Blocked',uncertain:'Checking delivery',retry:'Waiting to retry'})[item.status]||item.status;title.append(left,right);row.append(title);if(item.error||item.warning){const p=document.createElement('p');p.textContent=item.error||item.warning;row.append(p)}container.append(row)});
+const healthError=s.health.capture_error||s.health.helper_error;if(healthError)error(healthError)}
+$('connect').onsubmit=async e=>{e.preventDefault();$('save').disabled=true;try{const s=await action('/configure',{gateway:$('gateway').value,api_key:$('key').value,agent_name:$('agent').value});editing=false;$('key').value='';render(s)}catch(e){error(e.message)}finally{$('save').disabled=false}};
+$('pause').onclick=async()=>{try{render(await action(latest.enabled?'/pause':'/resume'))}catch(e){error(e.message)}};
+$('settings').onclick=()=>{editing=true;$('gateway').value=latest.gateway;$('agent').value=latest.agent_name;$('key').placeholder='Leave blank to keep your current key';$('consent').checked=true;$('back').hidden=false;render(latest)};
+$('back').onclick=()=>{editing=false;error('');render(latest)};
+async function poll(){try{const r=await fetch('/status');render(await r.json())}catch(e){error('The local helper is not responding. Open Setup again.')}}poll();setInterval(poll,2500);
+</script></body></html>
