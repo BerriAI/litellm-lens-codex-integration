@@ -10,17 +10,7 @@ Connect Codex to your LiteLLM gateway, then see the conversation and its tool ca
 
 You need **Codex desktop or CLI**, **Python 3.11+**, and a **LiteLLM gateway with tracing enabled**. Automatic setup currently supports **macOS**.
 
-### Ask Codex (recommended)
-
-Paste this into a Codex desktop or CLI chat:
-
-```text
-Install and set up https://github.com/BerriAI/litellm-lens-codex-integration for me. Follow AI_SETUP.md in that repository, handle the installation, and open the private Terminal setup for my gateway URL, key, and agent name.
-```
-
-Codex installs the plugin and opens Terminal. You enter the three values, confirm recording, then start a new chat. Your key stays out of the conversation.
-
-### From Terminal
+### From Terminal (recommended)
 
 **Same install for desktop and CLI.** Open Terminal and paste:
 
@@ -57,6 +47,16 @@ Follow all five steps to install and connect the plugin for **both desktop and C
 5. **Start another new chat and complete a turn.** Open **Lens → Traces** on your gateway to see it.
 
 Desktop and CLI use the same profile by default. If you use a custom `CODEX_HOME`, install into the profile your desktop uses.
+
+### Ask Codex
+
+Paste this into a Codex desktop or CLI chat:
+
+```text
+Install and set up https://github.com/BerriAI/litellm-lens-codex-integration for me. Follow AI_SETUP.md in that repository, handle the installation, and open the private Terminal setup for my gateway URL, key, and agent name.
+```
+
+Codex installs the plugin and opens Terminal. You enter the three values, confirm recording, then start a new chat. Your key stays out of the conversation.
 
 You don't need a Lens worker to view traces. A worker is needed to run investigations. Your Codex model, login, and provider stay unchanged.
 
