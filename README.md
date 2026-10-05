@@ -69,7 +69,9 @@ A trace contains the user prompts, final replies, and local tool calls for one c
 - Only activity after setup is recorded; old conversations are not uploaded.
 - A trace updates after each completed or interrupted turn, not on every streamed token.
 
-**Coverage matters:** this preview captures Codex's lifecycle hooks, not its complete internal model traffic. It includes shell, file-editing, and local/MCP tools that emit those hooks. Hosted web-search internals, hidden reasoning, images/binary attachments, and individual model-request prompts are not exported. Nested subagent reconstruction is not supported yet. Don't use this preview to measure complete model-call coverage.
+**Coverage matters:** this preview combines lifecycle hooks with visible transcript items for newly recorded turns. It includes commentary, repeated messages, shell and file changes, MCP results, web-search activity, compaction markers, and subagents. Resumed turns stay in the same chat trace, while child agents have separate branches. Model names and tool failures follow the recorded items. Assistant messages do not count as additional model calls.
+
+Hidden reasoning, images, binary attachments, and complete model-request prompts are not exported. Media gets an omission marker, and unknown item types get an unsupported-item marker. Missing or unreadable transcripts fall back to hook content with a warning. The transcript reader streams long files, but token usage can remain unknown for very long turns. The integration was exercised with Codex 0.160.0; future transcript formats may need an update. Do not use it to measure complete model-call coverage.
 
 Large tool outputs are shortened with a visible marker. Images, internal transport metadata, and duplicate MCP results are removed. Completed turns upload in small, recoverable batches; a busy local database does not block your Codex chat.
 

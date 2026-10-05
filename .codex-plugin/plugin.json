@@ -1,7 +1,7 @@
 {
   "name": "litellm-lens",
-  "version": "0.2.4",
-  "description": "Send Codex sessions to LiteLLM Lens using local lifecycle hooks.",
+  "version": "0.3.0",
+  "description": "Send visible Codex session messages, tools, and subagents to LiteLLM Lens.",
   "author": {
     "name": "BerriAI"
   },
