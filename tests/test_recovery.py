@@ -93,9 +93,16 @@ class QueueTests(Case):
 
     def test_capture_during_write_lock_is_durable_and_status_is_read_only(self):
         lock = self.lock_database()
-        started = time.monotonic()
-        self.record(output='retained evidence')
-        self.assertLess(time.monotonic() - started, 1)
+        events = (
+            self.event('UserPromptSubmit', prompt='Run'),
+            self.event('PreToolUse', tool_name='Bash', tool_use_id='tool-1', tool_input={'command': 'echo hello'}),
+            self.event('PostToolUse', tool_name='Bash', tool_use_id='tool-1', tool_response='retained evidence'),
+            self.event('Stop', last_assistant_message='Done'),
+        )
+        for event in events:
+            started = time.monotonic()
+            state.capture(event)
+            self.assertLess(time.monotonic() - started, 1)
         self.assertEqual(delivery.status()['counts']['queued_events'], 4)
         self.assertEqual(len(list((state.state_dir() / 'inbox').glob('*.json'))), 4)
         state.health('helper_error', 'Still working')
