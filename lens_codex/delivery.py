@@ -11,11 +11,12 @@ import urllib.error
 import urllib.request
 
 from . import __version__
-from .state import config, database, drain_inbox, health_notes, safe_health, state_dir
+from .state import config, database, drain_inbox, health_notes, safe_health, state_dir, transcript_path
 from .batches import spans, split
 from .content import encode
 from .trace import build_trace
 from .transcript import usage_for_turn
+from .session import read_recording
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -104,10 +105,13 @@ def prepare(turn: dict, settings: dict, now: float) -> list[dict]:
         parts = [payload]
         warning = turn["warning"]
     else:
-        usage, complete = usage_for_turn(turn["path"], turn["offset"], turn["turn"])
+        source_turn = turn.get("source_turn") or turn["turn"]
+        path = transcript_path({"transcript_path": turn["path"]}, settings) if turn["path"] else None
+        recording = read_recording(str(path) if path else None, turn["offset"], source_turn)
+        usage, complete = usage_for_turn(str(path) if path else None, turn["offset"], source_turn)
         if not complete and now < turn["ended"] + 15:
             return []
-        payload = build_trace(turn, rows, settings, usage)
+        payload = build_trace(turn, rows, settings, usage, recording)
         parts = split(payload)
         warning = turn["warning"] or (None if usage is not None else
             "Token usage was not available. This trace does not include a token or cost estimate.")
@@ -203,6 +207,21 @@ def deliver_turn(turn: dict, settings: dict, now: float) -> None:
         db.execute("DELETE FROM health WHERE key='delivery_error'")
 
 
+def finish_recorded_turns(settings: dict, now: float) -> None:
+    with database(write=False) as db:
+        turns = [dict(row) for row in db.execute("SELECT * FROM turns WHERE status='recording' AND started<? ORDER BY started LIMIT 10", (now - 15,))]
+    for turn in turns:
+        path = transcript_path({"transcript_path": turn["path"]}, settings) if turn["path"] else None
+        if path is None:
+            continue
+        recording = read_recording(str(path), turn["offset"], turn.get("source_turn") or turn["turn"])
+        if not recording.complete:
+            continue
+        with database() as db:
+            db.execute("UPDATE turns SET ended=?,status='pending',next_attempt=? WHERE session=? AND turn=? AND status='recording'",
+                       (recording.ended or now, now, turn["session"], turn["turn"]))
+
+
 def flush(now: float | None = None) -> None:
     settings = config()
     now = time.time() if now is None else now
@@ -212,6 +231,7 @@ def flush(now: float | None = None) -> None:
         drain_inbox()
         if not settings.get("enabled"):
             return
+        finish_recorded_turns(settings, now)
         with database() as db:
             # Version 0.2.3's rejected oversized requests were definitely not
             # accepted. Rebuild those from retained events using text-only batches.
