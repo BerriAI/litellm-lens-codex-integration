@@ -219,11 +219,11 @@ class BatchTests(Case):
         expected = batches.split(self.payload())
         with patch.object(delivery, 'request', side_effect=[{}, TimeoutError()]):
             delivery.flush(200)
-        received = {'spans': [{'span_id': s['spanId']} for s in batches.spans(expected[1])]}
+        received = {'received': True}
         with patch.object(delivery, 'request', side_effect=[received] + [{}] * len(expected)) as request:
             delivery.flush(240)
         self.assertEqual(self.turn()['status'], 'sent')
-        posts = [call.args[2] for call in request.call_args_list if len(call.args) == 3]
+        posts = [call.args[2] for call in request.call_args_list if call.args[1] == "/v1/traces"]
         self.assertEqual(posts, expected[2:])
 
     def test_unconfirmed_batch_never_blindly_replayed_and_other_chat_continues(self):
@@ -231,11 +231,11 @@ class BatchTests(Case):
         self.record(turn='other')
         with patch.object(delivery, 'request', side_effect=[TimeoutError(), {}]):
             delivery.flush(200)
-        with patch.object(delivery, 'request', return_value={'spans': []}) as request:
+        with patch.object(delivery, 'request', return_value={'received': False}) as request:
             delivery.flush(240)
         self.assertEqual(self.turn()['status'], 'uncertain')
         self.assertEqual(self.turn('other')['status'], 'sent')
-        self.assertTrue(all(len(c.args) == 2 for c in request.call_args_list))
+        self.assertTrue(all(c.args[1] == "/v1/traces/receipt" for c in request.call_args_list))
 
     def test_old_rejected_413_rebuilds_and_recovers_automatically(self):
         self.large_turn()
@@ -253,9 +253,9 @@ class BatchTests(Case):
         old = self.payload()
         with state.database() as db:
             db.execute("UPDATE turns SET status='uncertain',payload=?", (json.dumps(old),))
-        with patch.object(delivery, 'request', return_value={'spans': []}) as request:
+        with patch.object(delivery, 'request', return_value={'received': False}) as request:
             delivery.flush(200)
-        self.assertTrue(all(len(c.args) == 2 for c in request.call_args_list))
+        self.assertTrue(all(c.args[1] == "/v1/traces/receipt" for c in request.call_args_list))
         with state.database(write=False) as db:
             self.assertEqual(json.loads(db.execute('SELECT payload FROM batches').fetchone()[0]), old)
 
@@ -264,10 +264,10 @@ class BatchTests(Case):
         with patch.object(delivery, 'request', return_value={'partialSuccess': {'rejectedSpans': 1}}):
             delivery.flush(200)
         delivery.retry_blocked()
-        with patch.object(delivery, 'request', return_value={'spans': []}) as request:
+        with patch.object(delivery, 'request', return_value={'received': False}) as request:
             delivery.flush(240)
         self.assertEqual(self.turn()['status'], 'uncertain')
-        self.assertTrue(all(len(c.args) == 2 for c in request.call_args_list))
+        self.assertTrue(all(c.args[1] == "/v1/traces/receipt" for c in request.call_args_list))
 
 class HttpRecoveryTests(Case):
     """Exercise real HTTP, including a disconnected response after ingestion."""
@@ -291,6 +291,11 @@ class HttpRecoveryTests(Case):
                 length = int(self.headers['Content-Length'])
                 body_sizes.append(length)
                 payload = json.loads(self.rfile.read(length))
+                if self.path == '/v1/traces/receipt':
+                    self.send_response(200)
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'received': set(payload['span_ids']).issubset(ids)}).encode())
+                    return
                 if length > batches.MAX_BATCH_BYTES:
                     self.send_response(413)
                     self.end_headers()
@@ -365,3 +370,29 @@ class NetworkTests(Case):
             delivery.flush(200)
         self.assertEqual(self.turn()['status'], 'blocked')
         self.assertEqual(self.turn('healthy')['status'], 'sent')
+
+
+class ReceiptTests(Case):
+    def test_reconcile_chunks_large_turns_without_trace_read_access(self):
+        spans = [{"traceId": "a" * 32, "spanId": f"{i:016x}"} for i in range(2001)]
+        payload = {"resourceSpans": [{"scopeSpans": [{"spans": spans}]}]}
+        with patch.object(delivery, "request", return_value={"received": True}) as call:
+            self.assertTrue(delivery.reconcile(state.config(), payload))
+        self.assertEqual([len(c.args[2]["span_ids"]) for c in call.call_args_list], [1000, 1000, 1])
+        self.assertTrue(all(c.args[1] == "/v1/traces/receipt" for c in call.call_args_list))
+
+    def test_malformed_receipt_never_confirms_delivery(self):
+        self.record()
+        for response in ({"received": "true"}, {"received": 1}, {"received": False}, {}, []):
+            with self.subTest(response=response), patch.object(delivery, "request", return_value=response):
+                self.assertFalse(delivery.reconcile(state.config(), self.payload()))
+
+    def test_key_propagation_retries_before_accepting_a_batch(self):
+        self.record()
+        pending = urllib.error.HTTPError("https://lens.example", 429, "", {"Retry-After": "5"}, io.BytesIO())
+        with patch.object(delivery, "request", side_effect=pending):
+            delivery.flush(200)
+        self.assertEqual(self.turn()["status"], "retry")
+        with patch.object(delivery, "request", return_value={}):
+            delivery.flush(240)
+        self.assertEqual(self.turn()["status"], "sent")

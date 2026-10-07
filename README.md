@@ -20,7 +20,7 @@ curl -fsSL https://raw.githubusercontent.com/BerriAI/litellm-lens-codex-integrat
 
 It finds your installed Codex and installs the plugin. Desktop users don't need to install the CLI separately.
 
-1. Answer three questions in Terminal: your **gateway URL**, **LiteLLM virtual key** (hidden while typing), and **agent name**. Confirm when you're ready to start recording.
+1. Answer three questions in Terminal: your **Lens ingestion URL**, **Lens tracing key** (hidden while typing), and **agent name**. Confirm when you're ready to start recording.
 2. Start a **new chat in Codex desktop or CLI**, then open **Lens → Traces** on your gateway.
 
 Recording starts only when you confirm. Enter your key at the hidden prompt, never in a command or chat. No separate desktop app or Python packages are installed.
@@ -42,7 +42,7 @@ Follow all five steps to install and connect the plugin for **both desktop and C
 
    > Use lens-setup to connect my Codex chats to LiteLLM Lens.
 
-4. **Complete setup in the Terminal window that opens.** Enter your gateway URL, LiteLLM virtual key (hidden while typing), and agent name. Confirm to start recording.
+4. **Complete setup in the Terminal window that opens.** Enter your Lens ingestion URL, Lens tracing key (hidden while typing), and agent name. Confirm to start recording.
 
 5. **Start another new chat and complete a turn.** Open **Lens → Traces** on your gateway to see it.
 
@@ -53,7 +53,7 @@ Desktop and CLI use the same profile by default. If you use a custom `CODEX_HOME
 Paste this into a Codex desktop or CLI chat:
 
 ```text
-Install and set up https://github.com/BerriAI/litellm-lens-codex-integration for me. Follow AI_SETUP.md in that repository, handle the installation, and open the private Terminal setup for my gateway URL, key, and agent name.
+Install and set up https://github.com/BerriAI/litellm-lens-codex-integration for me. Follow AI_SETUP.md in that repository, handle the installation, and open the private Terminal setup for my Lens ingestion URL, key, and agent name.
 ```
 
 Codex installs the plugin and opens Terminal. You enter the three values, confirm recording, then start a new chat. Your key stays out of the conversation.

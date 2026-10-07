@@ -8,7 +8,7 @@ import queue
 import subprocess
 import threading
 
-from .state import state_dir
+from .state import EVENTS, state_dir
 from .bootstrap import engine
 
 
@@ -94,8 +94,8 @@ def approve_installed_hooks(binary: str | None = None, manifest: dict | None = N
     root = Path(manifest["plugin_root"]) if manifest.get("mode") == "plugin" else None
     with Client(binary or engine(), home) as client:
         hooks = own_hooks(client.call("hooks/list", {"cwds": [str(home)]}), manifest["command"], home, root)
-        if len(hooks) != 7:
-            raise ValueError("Codex could not find all seven Lens hooks. Update Codex, then try setup again.")
+        if len(hooks) != len(EVENTS):
+            raise ValueError("Codex could not find all Lens hooks. Update Codex, then try setup again.")
         edits = [{"keyPath": "hooks.state." + json.dumps(hook["key"]),
                   "value": {"enabled": True, "trusted_hash": hook["currentHash"]}, "mergeStrategy": "upsert"}
                  for hook in hooks]

@@ -22,7 +22,7 @@ home = root / "codex"
 copy_app()
 approve_installed_hooks()
 with Client(engine(), home) as client:
-    thread = client.call("thread/start", {"cwd": str(root / "work"), "model": "gpt-6-sol",
+    thread = client.call("thread/start", {"cwd": str(root / "work"), "model": "gpt-6.1-sol",
         "approvalPolicy": "never", "sandbox": "workspace-write", "threadSource": "desktop"})["thread"]["id"]
     for index, prompt in enumerate((
         "This is a telemetry acceptance test. Run the shell command python3 -c 'print(\"DESKTOP_TOOL_OK\")', then reply DESKTOP_FIRST_DONE.",
@@ -52,7 +52,8 @@ assert len(results) == 3, results
 assert all(r["status"] == "sent" for r in results), results
 assert len({r["trace_id"] for r in results}) == 1
 trace_id = results[0]["trace_id"]
-remote = request(config(), "/v1/traces/" + trace_id)
+reader = {"gateway": os.environ["LENS_READ_GATEWAY"], "api_key": os.environ["LENS_READ_API_KEY"]}
+remote = request(reader, "/v1/traces/" + trace_id)
 assert remote["summary"]["error_count"] > 0, "Cancelled turn was not marked interrupted"
 report = {"transport": "desktop app-server", "session_id": thread, "trace_id": trace_id,
           "turns": 3, "trusted_hooks_without_bypass": True, "cancelled_turn_marked": True}

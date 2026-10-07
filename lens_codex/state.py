@@ -67,14 +67,15 @@ def save_config(value: dict) -> None:
 def gateway_url(value: str) -> str:
     parsed = urlsplit(value.strip().rstrip("/"))
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-        raise ValueError("Enter your LiteLLM gateway URL, starting with https://.")
+        raise ValueError("Enter your Lens ingestion URL, starting with https://.")
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
-        raise ValueError("Use the gateway URL without credentials, a query, or a fragment.")
+        raise ValueError("Use the Lens ingestion URL without credentials, a query, or a fragment.")
     if parsed.scheme != "https" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
-        raise ValueError("Remote gateways must use HTTPS.")
-    if parsed.path not in {"", "/v1", "/v1/traces", "/ui"}:
-        raise ValueError("Use the gateway's base URL, without a page path.")
-    return f"{parsed.scheme}://{parsed.netloc}"
+        raise ValueError("Remote Lens endpoints must use HTTPS.")
+    if parsed.path not in {"", "/v1", "/v1/traces", "/ui", "/lens-ingest", "/lens-ingest/v1/traces"}:
+        raise ValueError("Use the Lens ingestion URL, without a page path.")
+    prefix = "/lens-ingest" if parsed.path.startswith("/lens-ingest") else ""
+    return f"{parsed.scheme}://{parsed.netloc}{prefix}"
 
 
 @contextlib.contextmanager
