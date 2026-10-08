@@ -111,7 +111,7 @@ class HttpTests(Case):
     def test_real_http_auth_error_does_not_echo_body(self):
         self.answer = 401
         self.response_body = {"error": "test-private-key"}
-        with self.assertRaisesRegex(ValueError, "cannot access traces"):
+        with self.assertRaisesRegex(ValueError, "cannot send traces"):
             delivery.verify(state.config())
 
     def test_redirect_does_not_forward_key(self):

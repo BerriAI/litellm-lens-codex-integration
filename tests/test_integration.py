@@ -248,9 +248,9 @@ class DeliveryTests(Case):
         with patch.object(delivery, "request", side_effect=TimeoutError):
             delivery.flush(200)
         self.assertEqual(self.turn()["status"], "uncertain")
-        with patch.object(delivery, "request", return_value={"spans": []}) as req:
+        with patch.object(delivery, "request", return_value={"received": False}) as req:
             delivery.flush(240)
-            self.assertEqual(len(req.call_args.args), 2)  # read-only reconciliation
+            self.assertEqual(req.call_args.args[1], "/v1/traces/receipt")
         self.assertEqual(self.turn()["status"], "uncertain")
 
     def test_reconcile_proves_all_spans_exist(self):
@@ -258,7 +258,7 @@ class DeliveryTests(Case):
         expected = self.payload()["resourceSpans"][0]["scopeSpans"][0]["spans"]
         with patch.object(delivery, "request", side_effect=TimeoutError):
             delivery.flush(200)
-        with patch.object(delivery, "request", return_value={"spans": [{"span_id": s["spanId"]} for s in expected]}):
+        with patch.object(delivery, "request", return_value={"received": True}):
             delivery.flush(240)
         self.assertEqual(self.turn()["status"], "sent")
 

@@ -8,7 +8,7 @@ Use the bundled launcher at `../../scripts/run.sh`, resolved relative to this sk
 ## Set up
 
 1. If already configured, run `bash <absolute-launcher-path> setup` to refresh the helper. This preserves the recording/paused state. Use `status` to check without exposing the key.
-2. For first-time setup on macOS, run `open -a Terminal <absolute-path-to-scripts/setup.command>` using the sibling `setup.command` file next to `run.sh`. This opens a real Terminal window for the user to enter their gateway URL, hidden LiteLLM key, and agent name. Do not run interactive setup in an agent tool terminal, read the user's terminal input, or submit answers for them. Never ask them to paste a key into chat or put it into a command, environment variable, or tool argument.
+2. For first-time setup on macOS, run `open -a Terminal <absolute-path-to-scripts/setup.command>` using the sibling `setup.command` file next to `run.sh`. This opens a real Terminal window for the user to enter their Lens ingestion URL, hidden tracing key, and agent name. Do not run interactive setup in an agent tool terminal, read the user's terminal input, or submit answers for them. Never ask them to paste a key into chat or put it into a command, environment variable, or tool argument.
 3. Setup explains what will be recorded and asks the user to connect. The user must answer themselves. If they prefer a browser, run `bash <absolute-launcher-path> setup --browser` instead; they can enter credentials and select Connect to Lens there. Do not click consent for them.
 4. Ask them to start a new local Codex chat after setup, then check Lens > Traces.
 

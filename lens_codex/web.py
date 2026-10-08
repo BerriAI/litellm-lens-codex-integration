@@ -46,7 +46,7 @@ def configure(value: dict, check: bool = True, *, enabled: bool = True) -> None:
     key = str(value.get("api_key", "")).strip() or old.get("api_key", "")
     name = str(value.get("agent_name", "codex")).strip()
     if not key or "\n" in key or "\r" in key:
-        raise ValueError("Enter a LiteLLM virtual key with access to traces.")
+        raise ValueError("Enter a Lens tracing key from Lens > Traces > Set up tracing.")
     if not name or len(name) > 100:
         raise ValueError("Give this agent a name (up to 100 characters).")
     if old.get("gateway") and old["gateway"] != gateway:

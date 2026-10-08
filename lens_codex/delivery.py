@@ -7,6 +7,7 @@ import json
 import socket
 import ssl
 import time
+import uuid
 import urllib.error
 import urllib.request
 
@@ -35,11 +36,10 @@ def request(settings: dict, path: str, payload: dict | None = None) -> object:
         "Authorization": "Bearer " + settings["api_key"], "Content-Type": "application/json",
         "User-Agent": "litellm-lens-codex/" + __version__})
     with opener.open(req, timeout=15) as response:
-        # Readback includes the whole trace; it can be larger than an upload batch.
-        limit = (32 if payload is None else 2) * 1024 * 1024
+        limit = 2 * 1024 * 1024
         raw = response.read(limit + 1)
         if len(raw) > limit:
-            raise ValueError("The gateway response exceeded the safe readback limit.")
+            raise ValueError("The Lens response exceeded the safe readback limit.")
         if not raw:
             return {}
         return json.loads(raw)
@@ -47,14 +47,16 @@ def request(settings: dict, path: str, payload: dict | None = None) -> object:
 
 def verify(settings: dict) -> None:
     try:
-        request(settings, "/v1/traces?limit=1")
+        result = request(settings, "/v1/traces/receipt", {"trace_id": uuid.uuid4().hex, "span_ids": []})
+        if not isinstance(result, dict) or type(result.get("received")) is not bool:
+            raise ValueError("Lens returned an invalid delivery receipt.")
     except urllib.error.HTTPError as exc:
         exc.close()
         if exc.code in {401, 403}:
-            raise ValueError("This key cannot access traces. Check the key and its tracing permissions.") from None
+            raise ValueError("This key cannot send traces. Generate a tracing key in Lens > Traces > Set up tracing.") from None
         if exc.code in {404, 501, 503}:
-            raise ValueError("Tracing is not available at this gateway. Enable Lens tracing first.") from None
-        raise ValueError(f"The gateway returned HTTP {exc.code}. Check the URL and try again.") from None
+            raise ValueError("The Lens ingestion service is unavailable. Copy its URL from Lens > Traces > Set up tracing.") from None
+        raise ValueError(f"The Lens service returned HTTP {exc.code}. Check the URL and try again.") from None
     except (OSError, ValueError) as exc:
         if isinstance(exc, ValueError) and "redirect" in str(exc):
             raise
@@ -69,11 +71,14 @@ def sent(db, turn: dict, trace_id: str) -> None:
 
 def reconcile(settings: dict, payload: dict) -> bool:
     spans = payload["resourceSpans"][0]["scopeSpans"][0]["spans"]
-    result = request(settings, "/v1/traces/" + spans[0]["traceId"])
-    if not isinstance(result, dict) or not isinstance(result.get("spans"), list):
-        return False
-    received = {s.get("span_id", s.get("spanId")) for s in result["spans"]}
-    return {s["spanId"] for s in spans}.issubset(received)
+    for offset in range(0, len(spans), 1000):
+        result = request(settings, "/v1/traces/receipt", {
+            "trace_id": spans[0]["traceId"],
+            "span_ids": [span["spanId"] for span in spans[offset:offset + 1000]],
+        })
+        if not isinstance(result, dict) or result.get("received") is not True:
+            return False
+    return bool(spans)
 
 
 @contextlib.contextmanager

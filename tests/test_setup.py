@@ -163,7 +163,7 @@ setup.terminal_setup()
         os.close(slave)
         output = b""
         try:
-            for prompt, answer in [(b"Gateway URL: ", b"https://gateway.example\n"),
+            for prompt, answer in [(b"Lens ingestion URL: ", b"https://gateway.example\n"),
                                    (b"(hidden): ", b"secret-should-not-echo\n"),
                                    (b"Agent name [codex]: ", b"desktop-demo\n"),
                                    (b"[y/N]: ", b"yes\n")]:

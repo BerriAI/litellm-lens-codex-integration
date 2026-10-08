@@ -45,11 +45,11 @@ def connect(reader, writer) -> bool:
     writer.write("\nConnect Codex to Lens\n\n")
     while True:
         try:
-            gateway = gateway_url(ask(reader, writer, "Gateway URL: "))
+            gateway = gateway_url(ask(reader, writer, "Lens ingestion URL: "))
             # Never fall back to displaying a key if the terminal cannot hide input.
             with warnings.catch_warnings():
                 warnings.simplefilter("error", getpass.GetPassWarning)
-                key = getpass.getpass("LiteLLM virtual key (hidden): ", stream=writer).strip()
+                key = getpass.getpass("Lens tracing key (hidden): ", stream=writer).strip()
             name = ask(reader, writer, "Agent name [codex]: ") or "codex"
             writer.write(f"\nNew prompts, replies, and tool output will be sent to {gateway}.\n"
                          "Past chats and hidden reasoning are not uploaded.\n")

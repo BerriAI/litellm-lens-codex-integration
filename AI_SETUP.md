@@ -1,6 +1,6 @@
 # Set up Lens for the user
 
-Install this repository's Codex plugin and open its private setup prompt. Do the installation work yourself; the user only needs to enter their gateway URL, key, and agent name in their own Terminal window, then confirm recording.
+Install this repository's Codex plugin and open its private setup prompt. Do the installation work yourself; the user only needs to enter their Lens ingestion URL, key, and agent name in their own Terminal window, then confirm recording.
 
 ## 1. Check requirements
 
@@ -35,7 +35,7 @@ Read `skills/lens-setup/SKILL.md` inside `installedPath`, then open the bundled 
 open -a Terminal "$installedPath/scripts/setup.command"
 ```
 
-This uses macOS Terminal, not the agent's execution terminal. For a new connection, the user enters their gateway URL, hidden virtual key, and agent name, and explicitly confirms recording. An existing connection skips the questions and preserves its paused/recording state. Do not ask for the key in chat, pass it in command arguments or environment variables, inspect Terminal input, or answer the consent prompt for them. An install or update is not permission to resume a paused connection.
+This uses macOS Terminal, not the agent's execution terminal. For a new connection, the user enters their Lens ingestion URL, hidden tracing key, and agent name, and explicitly confirms recording. An existing connection skips the questions and preserves its paused/recording state. Do not ask for the key in chat, pass it in command arguments or environment variables, inspect Terminal input, or answer the consent prompt for them. An install or update is not permission to resume a paused connection.
 
 If the user prefers browser setup, `bash "$installedPath/scripts/run.sh" setup --browser` opens the optional local page instead. Do not run the one-line interactive installer inside an agent execution tool for a new connection: it needs the user's own terminal.
 
@@ -51,4 +51,4 @@ bash "$installedPath/scripts/run.sh" status
 
 Ask the user to start a **new Codex desktop or CLI chat** and complete one turn. The plugin hooks load in the new chat. Their trace should appear in **Lens → Traces** on their gateway under their chosen agent name. Reopening a chat continues its trace; another chat has a different trace.
 
-Do not change model/provider/login settings, configure Codex's diagnostic OTel exporter, remove unrelated hooks, or upload existing conversations. A Lens worker is not needed to view traces.
+Do not change model/provider/login settings, configure Codex's diagnostic OTel exporter, remove unrelated hooks, or upload existing conversations. A running Lens service stores and serves traces.
