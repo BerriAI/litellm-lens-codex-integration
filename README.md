@@ -2,13 +2,15 @@
 
 **One Codex chat. One Lens trace.**
 
-Connect Codex to your LiteLLM gateway, then see the conversation and its tool calls together in Lens. Each completed turn is added to the same trace, including when you reopen a chat.
+Connect Codex to Lens, then see the conversation and its tool calls together in Lens. Each completed turn is added to the same trace, including when you reopen a chat.
 
 **Public preview, maintained by BerriAI.** An independent Codex plugin, not an OpenAI product.
 
 ## Install
 
-You need **Codex desktop or CLI**, **Python 3.11+**, and a **LiteLLM gateway with tracing enabled**. Automatic setup currently supports **macOS**.
+Need to install Lens itself or connect this project first? [Set it up for me](https://github.com/BerriAI/lens/blob/main/docs/setup-with-agent.md) provides optional copyable prompts. The plugin steps below connect your Codex sessions to a running Lens service
+
+You need **Codex desktop or CLI**, **Python 3.11+**, and a **running Lens service and a Lens tracing key**. Automatic setup currently supports **macOS**.
 
 ### From Terminal (recommended)
 
@@ -21,7 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/BerriAI/litellm-lens-codex-integrat
 It finds your installed Codex and installs the plugin. Desktop users don't need to install the CLI separately.
 
 1. Answer three questions in Terminal: your **Lens ingestion URL**, **Lens tracing key** (hidden while typing), and **agent name**. Confirm when you're ready to start recording.
-2. Start a **new chat in Codex desktop or CLI**, then open **Lens → Traces** on your gateway.
+2. Start a **new chat in Codex desktop or CLI**, then open **Lens → Traces** in standalone Lens or the LiteLLM dashboard.
 
 Recording starts only when you confirm. Enter your key at the hidden prompt, never in a command or chat. No separate desktop app or Python packages are installed.
 
@@ -44,7 +46,7 @@ Follow all five steps to install and connect the plugin for **both desktop and C
 
 4. **Complete setup in the Terminal window that opens.** Enter your Lens ingestion URL, Lens tracing key (hidden while typing), and agent name. Confirm to start recording.
 
-5. **Start another new chat and complete a turn.** Open **Lens → Traces** on your gateway to see it.
+5. **Start another new chat and complete a turn.** Open **Lens → Traces** in standalone Lens or the LiteLLM dashboard to see it.
 
 Desktop and CLI use the same profile by default. If you use a custom `CODEX_HOME`, install into the profile your desktop uses.
 
@@ -58,7 +60,7 @@ Install and set up https://github.com/BerriAI/litellm-lens-codex-integration for
 
 Codex installs the plugin and opens Terminal. You enter the three values, confirm recording, then start a new chat. Your key stays out of the conversation.
 
-You don't need a Lens worker to view traces. A worker is needed to run investigations. Your Codex model, login, and provider stay unchanged.
+Lens can run with ClickHouse alone. Its source is available in the public Lens repository; official standalone release artifacts are still being qualified. Follow the [Lens quickstart](https://github.com/BerriAI/lens/blob/main/deploy/lens/README.md), then open **Traces** and choose **Set up tracing** if the setup panel is not already open. Create your tracing key there. For a gateway-bundled release, use its **Lens > Traces > Set up tracing** flow. Copy the full traces endpoint, including `/v1/traces`. Your Codex model, login, and provider stay unchanged
 
 ## What you'll see
 
@@ -95,22 +97,22 @@ To remove the helper and its hooks:
 python3 -m lens_codex uninstall
 ```
 
-Then remove **LiteLLM Lens** from Codex’s Plugins page. Uninstalling only the plugin stops future hook capture; remove the helper first to stop delivery of any queued turns and clear the local key. Other Codex hooks are preserved. Queued data remains in `~/.local/share/litellm-lens-codex` for your review; delete that folder if you also want to remove it. Traces already sent to your gateway are not deleted.
+Then remove **LiteLLM Lens** from Codex’s Plugins page. Uninstalling only the plugin stops future hook capture; remove the helper first to stop delivery of any queued turns and clear the local key. Other Codex hooks are preserved. Queued data remains in `~/.local/share/litellm-lens-codex` for your review; delete that folder if you also want to remove it. Traces already sent to Lens are not deleted.
 
 ## If nothing appears
 
-Ask Codex to open Lens settings. The optional page shows whether a turn is still in progress, waiting to send, blocked by the gateway, or delivered.
+Ask Codex to open Lens settings. The optional page shows whether a turn is still in progress, waiting to send, blocked by Lens, or delivered.
 
 - **No recent activity:** make sure the plugin is enabled, reopen setup, and start a new chat. Check `/hooks` in the Codex CLI if your organization manages hooks centrally.
-- **Gateway rejected the key:** open **Settings**, replace the key, and reconnect. The saved turns retry automatically.
-- **Delivery not confirmed:** the helper checks Lens before retrying. It will not blindly resend a possibly accepted trace. If the gateway never received it, the queued content is kept for diagnosis rather than silently dropped.
+- **Lens rejected the key:** open **Settings**, replace the key, and reconnect. The saved turns retry automatically.
+- **Delivery not confirmed:** the helper checks Lens before retrying. It will not blindly resend a possibly accepted trace. If Lens never received it, the queued content is kept for diagnosis rather than silently dropped.
 - **Token usage unavailable:** the conversation still arrives. The current Codex version may use a transcript format this preview doesn't recognize.
 
 Remote/SSH Codex sessions need the helper on the machine where Codex runs. This Mac installer does not capture activity from another computer or Codex Cloud.
 
 ## Privacy and maintenance
 
-Prompts and tool output can contain source code and secrets. Enable recording only for a gateway you intend to share them with. Common API-key and Bearer-token patterns are redacted, but this is **not** a complete secret detector.
+Prompts and tool output can contain source code and secrets. Enable recording only for a Lens deployment you intend to share them with. Common API-key and Bearer-token patterns are redacted, but this is **not** a complete secret detector.
 
 The key and pending turns are stored in a private directory on your Mac. The key is not put in hook commands, browser storage, URLs, or logs. Sent prompt/tool content is removed from the local queue; delivery metadata is retained for seven days. TLS verification stays enabled. No analytics or third-party browser assets are used.
 

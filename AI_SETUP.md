@@ -49,6 +49,6 @@ bash "$installedPath/scripts/run.sh" status
 
 `status` never returns the key. Confirm that `configured` is true, and distinguish enabled recording from a configured but paused connection. Explain any setup or delivery error rather than claiming a trace has arrived.
 
-Ask the user to start a **new Codex desktop or CLI chat** and complete one turn. The plugin hooks load in the new chat. Their trace should appear in **Lens → Traces** on their gateway under their chosen agent name. Reopening a chat continues its trace; another chat has a different trace.
+Ask the user to start a **new Codex desktop or CLI chat** and complete one turn. The plugin hooks load in the new chat. Their trace should appear in **Lens → Traces** in their standalone Lens application or LiteLLM dashboard under their chosen agent name. Reopening a chat continues its trace; another chat has a different trace.
 
 Do not change model/provider/login settings, configure Codex's diagnostic OTel exporter, remove unrelated hooks, or upload existing conversations. A running Lens service stores and serves traces.
