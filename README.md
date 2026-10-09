@@ -60,7 +60,7 @@ Install and set up https://github.com/BerriAI/litellm-lens-codex-integration for
 
 Codex installs the plugin and opens Terminal. You enter the three values, confirm recording, then start a new chat. Your key stays out of the conversation.
 
-Lens can run with ClickHouse alone. Follow the [Lens quickstart](https://github.com/BerriAI/lens/blob/main/deploy/lens/README.md), then open **Settings > Tracing > Connect an agent** to create your tracing key. For a gateway-bundled release, use its **Lens > Traces > Set up tracing** flow. Copy the full traces endpoint, including `/v1/traces`. Your Codex model, login, and provider stay unchanged.
+Lens can run with ClickHouse alone. Follow the [Lens quickstart](https://github.com/BerriAI/lens/blob/main/deploy/lens/README.md), then open **Traces** and choose **Set up tracing** if the setup panel is not already open. Create your tracing key there. For a gateway-bundled release, use its **Lens > Traces > Set up tracing** flow. Copy the full traces endpoint, including `/v1/traces`. Your Codex model, login, and provider stay unchanged
 
 ## What you'll see
 
