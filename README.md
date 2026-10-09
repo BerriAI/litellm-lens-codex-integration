@@ -8,6 +8,8 @@ Connect Codex to Lens, then see the conversation and its tool calls together in 
 
 ## Install
 
+Need to install Lens itself or connect this project first? [Set it up for me](https://github.com/BerriAI/lens/blob/main/docs/setup-with-agent.md) provides optional copyable prompts. The plugin steps below connect your Codex sessions to a running Lens service
+
 You need **Codex desktop or CLI**, **Python 3.11+**, and a **running Lens service and a Lens tracing key**. Automatic setup currently supports **macOS**.
 
 ### From Terminal (recommended)
