@@ -1,5 +1,15 @@
 # Codex → Lens
 
+> **This plugin has moved to [BerriAI/litellm-lens-plugins](https://github.com/BerriAI/litellm-lens-plugins/tree/main/codex).** New versions are published there, with Linux setup and model-call steps with gateway cost. The plugin keeps its name, `litellm-lens@berriai-lens`, and its local settings. To switch, run:
+>
+> ```bash
+> codex plugin marketplace remove berriai-lens
+> codex plugin marketplace add BerriAI/litellm-lens-plugins
+> codex plugin add litellm-lens@berriai-lens
+> ```
+>
+> Then run setup once so Codex trusts the hooks at the new version. This repository stays available but no longer receives updates.
+
 **One Codex chat. One Lens trace.**
 
 Connect Codex to your LiteLLM gateway, then see the conversation and its tool calls together in Lens. Each completed turn is added to the same trace, including when you reopen a chat.
